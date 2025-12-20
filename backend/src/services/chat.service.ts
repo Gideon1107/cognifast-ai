@@ -1,0 +1,544 @@
+import { v4 as uuidv4 } from 'uuid';
+import supabase from '../db/dbConnection';
+import { executeChatGraph, streamChatGraph } from '../graphs/chat.graph';
+import {
+    Conversation,
+    Message,
+    ConversationState,
+    StartConversationRequest,
+    SendMessageRequest
+} from '../types/chat.types';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('CHAT-SERVICE');
+
+export class ChatService {
+    /**
+     * Create a new conversation
+     */
+    static async createConversation(request: StartConversationRequest): Promise<{ conversation: Conversation; initialMessages: Message[] }> {
+        try {
+            const { documentIds } = request;
+
+            // Validate documentIds is non-empty array
+            if (!documentIds || !Array.isArray(documentIds) || documentIds.length === 0) {
+                throw new Error('documentIds must be a non-empty array');
+            }
+
+            // Validate all documents exist
+            const { data: docs, error: docError } = await supabase
+                .from('documents')
+                .select('id, original_name')
+                .in('id', documentIds);
+
+            if (docError) {
+                throw new Error(`Error fetching documents: ${docError.message}`);
+            }
+
+            if (!docs || docs.length !== documentIds.length) {
+                throw new Error('One or more documents not found');
+            }
+
+            // Create conversation (no document_id column anymore)
+            const conversationId = uuidv4();
+            const title = request.initialMessage?.slice(0, 50) || 'New Conversation';
+
+            const { data, error } = await supabase
+                .from('conversations')
+                .insert([{
+                    id: conversationId,
+                    title: title,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
+
+            if (error) {
+                throw new Error(`Failed to create conversation: ${error.message}`);
+            }
+
+            // Insert document associations via junction table
+            const associations = documentIds.map(docId => ({
+                conversation_id: conversationId,
+                document_id: docId
+            }));
+
+            const { error: junctionError } = await supabase
+                .from('conversation_documents')
+                .insert(associations);
+
+            if (junctionError) {
+                // Rollback: delete the conversation
+                await supabase.from('conversations').delete().eq('id', conversationId);
+                throw new Error(`Failed to associate documents: ${junctionError.message}`);
+            }
+
+            logger.info(`Conversation created: ${conversationId} with ${documentIds.length} document(s)`);
+
+            const conversation: Conversation = {
+                id: data.id,
+                documentIds: documentIds,
+                documentNames: docs.map(d => d.original_name),
+                title: data.title,
+                createdAt: data.created_at,
+                updatedAt: data.updated_at
+            };
+
+            // If there's an initial message, process it and return the conversation with messages
+            if (request.initialMessage) {
+                const assistantMessage = await this.sendMessage({
+                    conversationId: conversationId,
+                    message: request.initialMessage
+                });
+                
+                // Return conversation with the initial exchange
+                return {
+                    conversation,
+                    initialMessages: [
+                        {
+                            id: uuidv4(),
+                            conversationId: conversationId,
+                            role: 'user' as const,
+                            content: request.initialMessage,
+                            createdAt: new Date().toISOString()
+                        },
+                        assistantMessage
+                    ]
+                };
+            }
+
+            return { conversation, initialMessages: [] };
+
+        } catch (error: any) {
+            logger.error(`Error creating conversation: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Send a message and get AI response using LangGraph
+     */
+    static async sendMessage(request: SendMessageRequest): Promise<Message> {
+        try {
+            const sendMessageStartTime = Date.now();
+            
+            // Get conversation
+            const convStartTime = Date.now();
+            const { data: conversation, error: convError } = await supabase
+                .from('conversations')
+                .select('*')
+                .eq('id', request.conversationId)
+                .single();
+
+            if (convError || !conversation) {
+                throw new Error(`Conversation not found: ${request.conversationId}`);
+            }
+            logger.info(`[TIMING] Fetch conversation: ${Date.now() - convStartTime}ms`);
+
+            // Get document IDs from junction table
+            const docStartTime = Date.now();
+            const { data: convDocs, error: convDocsError } = await supabase
+                .from('conversation_documents')
+                .select('document_id')
+                .eq('conversation_id', request.conversationId);
+
+            if (convDocsError) {
+                throw new Error(`Failed to fetch conversation documents: ${convDocsError.message}`);
+            }
+
+            const documentIds = (convDocs || []).map(cd => cd.document_id);
+
+            if (documentIds.length === 0) {
+                throw new Error('No documents associated with this conversation');
+            }
+            logger.info(`[TIMING] Fetch document IDs: ${Date.now() - docStartTime}ms`);
+
+            // Get conversation history
+            const historyStartTime = Date.now();
+            const { data: messageHistory, error: msgError } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('conversation_id', request.conversationId)
+                .order('created_at', { ascending: true });
+
+            if (msgError) {
+                throw new Error(`Failed to fetch messages: ${msgError.message}`);
+            }
+            logger.info(`[TIMING] Fetch message history: ${Date.now() - historyStartTime}ms`);
+
+            // Convert to Message format
+            const messages: Message[] = (messageHistory || []).map(msg => ({
+                id: msg.id,
+                conversationId: msg.conversation_id,
+                role: msg.role,
+                content: msg.content,
+                sources: msg.sources,
+                createdAt: msg.created_at
+            }));
+
+            // Create user message
+            const userMessage: Message = {
+                id: uuidv4(),
+                conversationId: request.conversationId,
+                role: 'user',
+                content: request.message,
+                createdAt: new Date().toISOString()
+            };
+
+            // Save user message to database
+            const saveUserMsgStartTime = Date.now();
+            await supabase
+                .from('messages')
+                .insert([{
+                    id: userMessage.id,
+                    conversation_id: userMessage.conversationId,
+                    role: userMessage.role,
+                    content: userMessage.content,
+                    created_at: userMessage.createdAt
+                }]);
+            logger.info(`[TIMING] Save user message: ${Date.now() - saveUserMsgStartTime}ms`);
+            logger.info(`User message saved: ${userMessage.id}`);
+
+            // Prepare initial state for LangGraph
+            const isFirstMessage = messages.length === 0;
+            const initialState: ConversationState = {
+                conversationId: request.conversationId,
+                documentIds: documentIds, // Array of document IDs
+                messages: [...messages, userMessage], // Include user message
+                currentQuery: request.message,
+                retrievedChunks: [],
+                routerDecision: 'clarify',
+                responseQuality: 'pending',
+                retryCount: 0,
+                metadata: {
+                    startTime: Date.now(),
+                    isFirstMessage: isFirstMessage // Flag to skip quality check
+                }
+            };
+
+            // Execute the LangGraph chat workflow
+            const totalStartTime = Date.now();
+            logger.info('Executing Chat StateGraph...');
+            const finalState = await executeChatGraph(initialState);
+            const totalEndTime = Date.now();
+            logger.info(`Total graph execution time: ${totalEndTime - totalStartTime}ms`);
+
+            // Get the assistant's message (last message in the final state)
+            const assistantMessage = finalState.messages[finalState.messages.length - 1];
+
+            if (!assistantMessage || assistantMessage.role !== 'assistant') {
+                logger.error('Final state messages:', finalState.messages.map(m => ({ role: m.role, contentLength: m.content?.length })));
+                logger.error(`Final state quality: ${finalState.responseQuality}`);
+                logger.error(`Final state retry count: ${finalState.retryCount}`);
+                throw new Error('No assistant message generated');
+            }
+
+            // Save assistant message to database
+            const saveAssistantMsgStartTime = Date.now();
+            await supabase
+                .from('messages')
+                .insert([{
+                    id: assistantMessage.id,
+                    conversation_id: assistantMessage.conversationId,
+                    role: assistantMessage.role,
+                    content: assistantMessage.content,
+                    sources: assistantMessage.sources ? JSON.stringify(assistantMessage.sources) : null,
+                    created_at: assistantMessage.createdAt
+                }]);
+            logger.info(`[TIMING] Save assistant message: ${Date.now() - saveAssistantMsgStartTime}ms`);
+            logger.info(`Assistant message saved: ${assistantMessage.id}`);
+
+            // Update conversation's updated_at timestamp
+            const updateConvStartTime = Date.now();
+            await supabase
+                .from('conversations')
+                .update({ updated_at: new Date().toISOString() })
+                .eq('id', request.conversationId);
+            logger.info(`[TIMING] Update conversation timestamp: ${Date.now() - updateConvStartTime}ms`);
+
+            const sendMessageEndTime = Date.now();
+            const totalTime = sendMessageEndTime - sendMessageStartTime;
+            const isFollowUp = messages.length > 0;
+            
+            logger.info(`[TIMING] ========================================`);
+            logger.info(`[TIMING] Total sendMessage time: ${totalTime}ms (${isFollowUp ? 'FOLLOW-UP' : 'FIRST'} message)`);
+            logger.info(`[TIMING] ========================================`);
+
+            return assistantMessage;
+
+        } catch (error: any) {
+            logger.error(`Error sending message: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Get a conversation with all messages
+     */
+    static async getConversation(conversationId: string): Promise<{ conversation: Conversation; messages: Message[] }> {
+        try {
+            // Get conversation
+            const { data: conversation, error: convError } = await supabase
+                .from('conversations')
+                .select('*')
+                .eq('id', conversationId)
+                .single();
+
+            if (convError || !conversation) {
+                throw new Error(`Conversation not found: ${conversationId}`);
+            }
+
+            // Get document IDs and names from junction table
+            const { data: convDocs, error: convDocsError } = await supabase
+                .from('conversation_documents')
+                .select('document_id')
+                .eq('conversation_id', conversationId);
+
+            if (convDocsError) {
+                throw new Error(`Failed to fetch conversation documents: ${convDocsError.message}`);
+            }
+
+            const documentIds = (convDocs || []).map(cd => cd.document_id);
+
+            // Get document names
+            let documentNames: string[] = [];
+            if (documentIds.length > 0) {
+                const { data: docs } = await supabase
+                    .from('documents')
+                    .select('id, original_name')
+                    .in('id', documentIds);
+                documentNames = (docs || []).map(d => d.original_name);
+            }
+
+            // Get messages
+            const { data: messageData, error: msgError } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('conversation_id', conversationId)
+                .order('created_at', { ascending: true});
+
+            if (msgError) {
+                throw new Error(`Failed to fetch messages: ${msgError.message}`);
+            }
+
+            const messages: Message[] = (messageData || []).map(msg => ({
+                id: msg.id,
+                conversationId: msg.conversation_id,
+                role: msg.role,
+                content: msg.content,
+                sources: msg.sources,
+                createdAt: msg.created_at
+            }));
+
+            return {
+                conversation: {
+                    id: conversation.id,
+                    documentIds: documentIds,
+                    documentNames: documentNames,
+                    title: conversation.title,
+                    createdAt: conversation.created_at,
+                    updatedAt: conversation.updated_at
+                },
+                messages
+            };
+
+        } catch (error: any) {
+            logger.error(`Error getting conversation: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Get all conversations for a document
+     */
+    static async getConversationsByDocument(documentId: string): Promise<Conversation[]> {
+        try {
+            // Get conversation IDs that include this document via junction table
+            const { data: convDocs, error: junctionError } = await supabase
+                .from('conversation_documents')
+                .select('conversation_id')
+                .eq('document_id', documentId);
+
+            if (junctionError) {
+                throw new Error(`Failed to fetch conversations: ${junctionError.message}`);
+            }
+
+            const conversationIds = (convDocs || []).map(cd => cd.conversation_id);
+
+            if (conversationIds.length === 0) {
+                return [];
+            }
+
+            // Get conversation details
+            const { data: conversations, error } = await supabase
+                .from('conversations')
+                .select('*')
+                .in('id', conversationIds)
+                .order('updated_at', { ascending: false });
+
+            if (error) {
+                throw new Error(`Failed to fetch conversations: ${error.message}`);
+            }
+
+            // For each conversation, fetch all associated document IDs and names
+            const conversationsWithDocs = await Promise.all(
+                (conversations || []).map(async (conv) => {
+                    const { data: docs } = await supabase
+                        .from('conversation_documents')
+                        .select('document_id')
+                        .eq('conversation_id', conv.id);
+
+                    const docIds = (docs || []).map(d => d.document_id);
+
+                    // Fetch document names
+                    const { data: docDetails } = await supabase
+                        .from('documents')
+                        .select('id, original_name')
+                        .in('id', docIds);
+
+                    const docNames = (docDetails || []).map(d => d.original_name);
+
+                    return {
+                        id: conv.id,
+                        documentIds: docIds,
+                        documentNames: docNames,
+                        title: conv.title,
+                        createdAt: conv.created_at,
+                        updatedAt: conv.updated_at
+                    };
+                })
+            );
+
+            return conversationsWithDocs;
+
+        } catch (error: any) {
+            logger.error(`Error getting conversations by document: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Delete a conversation and all its messages
+     */
+    static async deleteConversation(conversationId: string): Promise<void> {
+        try {
+            // Messages will be deleted automatically due to CASCADE
+            const { error } = await supabase
+                .from('conversations')
+                .delete()
+                .eq('id', conversationId);
+
+            if (error) {
+                throw new Error(`Failed to delete conversation: ${error.message}`);
+            }
+
+            logger.info(`Conversation deleted: ${conversationId}`);
+
+        } catch (error: any) {
+            logger.error(`Error deleting conversation: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Stream a chat response (for future WebSocket implementation)
+     */
+    static async* streamMessage(request: SendMessageRequest) {
+        try {
+            // Get conversation
+            const { data: conversation, error: convError } = await supabase
+                .from('conversations')
+                .select('*')
+                .eq('id', request.conversationId)
+                .single();
+
+            if (convError || !conversation) {
+                throw new Error(`Conversation not found: ${request.conversationId}`);
+            }
+
+            // Get document IDs from junction table
+            const { data: convDocs, error: convDocsError } = await supabase
+                .from('conversation_documents')
+                .select('document_id')
+                .eq('conversation_id', request.conversationId);
+
+            if (convDocsError) {
+                throw new Error(`Failed to fetch conversation documents: ${convDocsError.message}`);
+            }
+
+            const documentIds = (convDocs || []).map(cd => cd.document_id);
+
+            if (documentIds.length === 0) {
+                throw new Error('No documents associated with this conversation');
+            }
+
+            // Get conversation history
+            const { data: messageHistory, error: msgError } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('conversation_id', request.conversationId)
+                .order('created_at', { ascending: true });
+
+            if (msgError) {
+                throw new Error(`Failed to fetch messages: ${msgError.message}`);
+            }
+
+            const messages: Message[] = (messageHistory || []).map(msg => ({
+                id: msg.id,
+                conversationId: msg.conversation_id,
+                role: msg.role,
+                content: msg.content,
+                sources: msg.sources,
+                createdAt: msg.created_at
+            }));
+
+            // Create user message
+            const userMessage: Message = {
+                id: uuidv4(),
+                conversationId: request.conversationId,
+                role: 'user',
+                content: request.message,
+                createdAt: new Date().toISOString()
+            };
+
+            // Save user message
+            await supabase
+                .from('messages')
+                .insert([{
+                    id: userMessage.id,
+                    conversation_id: userMessage.conversationId,
+                    role: userMessage.role,
+                    content: userMessage.content,
+                    created_at: userMessage.createdAt
+                }]);
+
+            // Prepare initial state
+            const initialState: ConversationState = {
+                conversationId: request.conversationId,
+                documentIds: documentIds, // Array of document IDs
+                messages: [...messages, userMessage],
+                currentQuery: request.message,
+                retrievedChunks: [],
+                routerDecision: 'clarify',
+                responseQuality: 'pending',
+                retryCount: 0,
+                metadata: {
+                    startTime: Date.now()
+                }
+            };
+
+            // Stream the graph execution
+            logger.info('Streaming Chat StateGraph...');
+            
+            for await (const stateUpdate of streamChatGraph(initialState)) {
+                yield stateUpdate;
+            }
+
+        } catch (error: any) {
+            logger.error(`Error streaming message: ${error.message}`);
+            throw error;
+        }
+    }
+}
+

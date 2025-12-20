@@ -1,0 +1,116 @@
+{
+  "info": {
+    "name": "Cognifast AI - Chat API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Get Documents",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/documents",
+          "host": ["{{base_url}}"],
+          "path": ["api", "documents"]
+        }
+      }
+    },
+    {
+      "name": "2. Start Conversation",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"documentId\": \"{{document_id}}\",\n  \"initialMessage\": \"Hello! What is this document about?\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/chat/conversations",
+          "host": ["{{base_url}}"],
+          "path": ["api", "chat", "conversations"]
+        }
+      }
+    },
+    {
+      "name": "3. Send Message",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"message\": \"Can you explain the main concepts in detail?\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/chat/conversations/{{conversation_id}}/messages",
+          "host": ["{{base_url}}"],
+          "path": ["api", "chat", "conversations", "{{conversation_id}}", "messages"]
+        }
+      }
+    },
+    {
+      "name": "4. Get Conversation History",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/chat/conversations/{{conversation_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "chat", "conversations", "{{conversation_id}}"]
+        }
+      }
+    },
+    {
+      "name": "5. List Conversations by Document",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/chat/documents/{{document_id}}/conversations",
+          "host": ["{{base_url}}"],
+          "path": ["api", "chat", "documents", "{{document_id}}", "conversations"]
+        }
+      }
+    },
+    {
+      "name": "6. Delete Conversation",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/chat/conversations/{{conversation_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "chat", "conversations", "{{conversation_id}}"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "document_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "conversation_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
+
