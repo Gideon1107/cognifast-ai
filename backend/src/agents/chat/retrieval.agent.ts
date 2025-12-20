@@ -20,15 +20,16 @@ export class RetrievalAgent {
      */
     async execute(state: ConversationState): Promise<Partial<ConversationState>> {
         const startTime = Date.now();
-        logger.info(`Retrieving chunks for: "${state.currentQuery}" from ${state.documentIds.length} document(s)`);
+        logger.info(`Retrieving chunks for: "${state.currentQuery}" from ${state.documentIds.length} document(s) in current conversation`);
 
         try {
-            // Use retrieval service to find relevant chunks from multiple documents
+            // Use retrieval service to find relevant chunks from the current conversation's documents
             const retrievedChunks = await this.retrievalService.retrieveRelevantChunks(
                 state.currentQuery,
-                state.documentIds, // Pass array of document IDs
-                5 // Top 5 chunks across all documents
+                state.documentIds, // Pass array of document IDs from current conversation
+                5 // Top 5 chunks
             );
+
             
             const endTime = Date.now();
             logger.info(`Retrieval completed in ${endTime - startTime}ms`);

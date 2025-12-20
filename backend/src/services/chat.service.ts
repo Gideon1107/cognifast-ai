@@ -6,7 +6,8 @@ import {
     Message,
     ConversationState,
     StartConversationRequest,
-    SendMessageRequest
+    SendMessageRequest,
+    SendMessageResult
 } from '../types/chat.types';
 import { createLogger } from '../utils/logger';
 
@@ -39,7 +40,7 @@ export class ChatService {
                 throw new Error('One or more documents not found');
             }
 
-            // Create conversation (no document_id column anymore)
+            // Create conversation
             const conversationId = uuidv4();
             const title = request.initialMessage?.slice(0, 50) || 'New Conversation';
 
@@ -87,7 +88,7 @@ export class ChatService {
 
             // If there's an initial message, process it and return the conversation with messages
             if (request.initialMessage) {
-                const assistantMessage = await this.sendMessage({
+                const result = await this.sendMessage({
                     conversationId: conversationId,
                     message: request.initialMessage
                 });
@@ -103,7 +104,7 @@ export class ChatService {
                             content: request.initialMessage,
                             createdAt: new Date().toISOString()
                         },
-                        assistantMessage
+                        result.message
                     ]
                 };
             }
@@ -119,7 +120,7 @@ export class ChatService {
     /**
      * Send a message and get AI response using LangGraph
      */
-    static async sendMessage(request: SendMessageRequest): Promise<Message> {
+    static async sendMessage(request: SendMessageRequest): Promise<SendMessageResult> {
         try {
             const sendMessageStartTime = Date.now();
             
@@ -265,7 +266,16 @@ export class ChatService {
             logger.info(`[TIMING] Total sendMessage time: ${totalTime}ms (${isFollowUp ? 'FOLLOW-UP' : 'FIRST'} message)`);
             logger.info(`[TIMING] ========================================`);
 
-            return assistantMessage;
+            return {
+                message: assistantMessage,
+                metadata: {
+                    totalTokens: finalState.metadata.totalTokens,
+                    model: finalState.metadata.model,
+                    executionTime: totalTime,
+                    startTime: finalState.metadata.startTime,
+                    endTime: finalState.metadata.endTime
+                }
+            };
 
         } catch (error: any) {
             logger.error(`Error sending message: ${error.message}`);

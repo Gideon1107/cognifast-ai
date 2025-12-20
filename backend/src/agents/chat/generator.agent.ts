@@ -52,15 +52,16 @@ export class GeneratorAgent {
 
             // Create assistant message
             const assistantMessage: Message = {
-                id: uuidv4(), // Generate unique ID
+                id: uuidv4(), 
                 conversationId: state.conversationId,
                 role: "assistant",
                 content: content,
                 sources: state.retrievedChunks.map((chunk) => ({
                     chunkId: chunk.id,
                     documentId: chunk.documentId,
-                    documentName: chunk.documentName, // Include document name
+                    documentName: chunk.documentName,
                     chunkText: chunk.chunkText,
+                    chunkIndex: chunk.chunkIndex,
                     similarity: chunk.similarity,
                 })),
                 createdAt: new Date().toISOString(),
@@ -86,7 +87,7 @@ export class GeneratorAgent {
 
             // Return error message
             const errorMessage: Message = {
-                id: uuidv4(), // Generate unique ID
+                id: uuidv4(),
                 conversationId: state.conversationId,
                 role: "assistant",
                 content:

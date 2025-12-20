@@ -11,6 +11,7 @@
 DROP FUNCTION IF EXISTS public.match_document_chunks(vector, integer, uuid);
 DROP FUNCTION IF EXISTS public.match_document_chunks(vector(1536), integer, uuid);
 
+
 CREATE OR REPLACE FUNCTION public.match_document_chunks(
     query_embedding vector(1536),
     match_count integer DEFAULT 5,
@@ -39,8 +40,40 @@ AS $$
     LIMIT match_count;
 $$;
 
+
+-- Multi-document version: filter by an array of document IDs in Postgres (no "search everything then filter in Node").
+DROP FUNCTION IF EXISTS public.match_documents_chunks(vector(1536), integer, uuid[]);
+
+CREATE OR REPLACE FUNCTION public.match_documents_chunks(
+    query_embedding vector(1536),
+    match_count integer DEFAULT 5,
+    filter_document_ids uuid[] DEFAULT NULL
+)
+RETURNS TABLE (
+    id uuid,
+    document_id uuid,
+    chunk_text text,
+    chunk_index integer,
+    similarity double precision
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        dc.id,
+        dc.document_id,
+        dc.chunk_text,
+        dc.chunk_index,
+        1 - (dc.embedding <=> query_embedding) AS similarity
+    FROM public.document_chunks dc
+    WHERE
+        dc.embedding IS NOT NULL
+        AND (filter_document_ids IS NULL OR dc.document_id = ANY(filter_document_ids))
+    ORDER BY dc.embedding <=> query_embedding
+    LIMIT match_count;
+$$;
+
 -- Test the function (optional - you can remove this)
--- SELECT * FROM match_document_chunks(
+-- SELECT * FROM match_documents_chunks(
 --     (SELECT embedding FROM document_chunks LIMIT 1),
 --     5,
 --     NULL

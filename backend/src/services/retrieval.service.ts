@@ -1,5 +1,8 @@
 import supabase from '../db/dbConnection';
 import { EmbeddingService } from './embedding.service';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('RETRIEVAL-SERVICE');
 
 /**
  * Retrieved chunk with similarity score
@@ -38,6 +41,9 @@ export class RetrievalService {
     ): Promise<RetrievedChunk[]> {
         try {
             console.log(`[INFO-[RETRIEVAL-SERVICE] Retrieving top ${topK} chunks for query: "${query.substring(0, 50)}..." from ${documentIds.length} document(s)`);
+            if (!documentIds || documentIds.length === 0) {
+                throw new Error('documentIds must be a non-empty array');
+            }
 
             // Step 1: Generate query embedding
             const queryEmbedding = await this.embeddingService.generateQueryEmbedding(query);
@@ -58,16 +64,16 @@ export class RetrievalService {
             }
             
             // Step 2: Call RPC with detailed diagnostics
-            const matchCount = topK * Math.max(documentIds.length, 2);
+            const matchCount = topK;
             
             console.log(`[DEBUG-[RETRIEVAL-SERVICE] === RPC CALL DETAILS ===`);
             console.log(`[DEBUG-[RETRIEVAL-SERVICE] Requested documentIds: [${documentIds.join(', ')}]`);
             console.log(`[DEBUG-[RETRIEVAL-SERVICE] Match count: ${matchCount}, topK: ${topK}`);
             
-            const { data, error } = await supabase.rpc('match_document_chunks', {
+            const { data, error } = await supabase.rpc('match_documents_chunks', {
                 query_embedding: queryEmbedding,
                 match_count: matchCount,
-                filter_document_id: null
+                filter_document_ids: documentIds
             });
 
             if (error) {
@@ -99,23 +105,7 @@ export class RetrievalService {
                 return await this.directSearch(queryEmbedding, documentIds, topK);
             }
 
-            // Filter by requested documentIds
-            const filteredData = data.filter((row: any) => 
-                documentIds.includes(row.document_id)
-            );
-            
-            console.log(`[DEBUG-[RETRIEVAL-SERVICE] After filtering: ${filteredData.length} chunks match requested documents`);
-
-            if (filteredData.length === 0) {
-                console.error(`[ERROR-[RETRIEVAL-SERVICE] ⚠️ DOCUMENT ID MISMATCH!`);
-                console.error(`[ERROR-[RETRIEVAL-SERVICE] Requested: [${documentIds.join(', ')}]`);
-                console.error(`[ERROR-[RETRIEVAL-SERVICE] RPC returned: [${[...new Set(data.map((d: any) => d.document_id))].join(', ')}]`);
-                console.error(`[ERROR-[RETRIEVAL-SERVICE] This means conversation has WRONG document IDs!`);
-                console.warn(`[WARN-[RETRIEVAL-SERVICE] Falling back to direct search`);
-                return await this.directSearch(queryEmbedding, documentIds, topK);
-            }
-            
-            const topChunks = filteredData.slice(0, topK);
+            const topChunks = data.slice(0, topK);
 
             const enrichedChunks = await this.enrichWithDocumentNames(topChunks);
             const avgSimilarity = enrichedChunks.reduce((sum, c) => sum + c.similarity, 0) / enrichedChunks.length;
@@ -157,7 +147,7 @@ export class RetrievalService {
                 documentName: docMap.get(chunk.document_id) || 'Unknown',
                 chunkText: chunk.chunk_text,
                 chunkIndex: chunk.chunk_index,
-                similarity: 1 - chunk.similarity // Convert distance to similarity
+                similarity: Number(chunk.similarity)
             }));
         } catch (error: any) {
             console.error('[ERROR-[RETRIEVAL-SERVICE] Error enriching with document names:', error);
@@ -168,7 +158,7 @@ export class RetrievalService {
                 documentName: 'Unknown',
                 chunkText: chunk.chunk_text,
                 chunkIndex: chunk.chunk_index,
-                similarity: 1 - chunk.similarity
+                similarity: Number(chunk.similarity)
             }));
         }
     }

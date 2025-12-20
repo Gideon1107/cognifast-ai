@@ -30,6 +30,7 @@ export interface MessageSource {
     documentId: string;
     documentName: string; // Name of the document (e.g., "Resume.pdf")
     chunkText: string;
+    chunkIndex: number; // Index of the chunk within the document
     similarity: number;
 }
 
@@ -96,10 +97,26 @@ export interface SendMessageRequest {
     message: string;
 }
 
+export interface SendMessageResult {
+    message: Message;
+    metadata: {
+        totalTokens?: number;
+        model?: string;
+        executionTime?: number;
+        startTime?: number;
+        endTime?: number;
+    };
+}
+
 export interface SendMessageResponse {
     success: boolean;
     message: Message;
     sources?: MessageSource[];
+    metadata?: {
+        totalTokens?: number;
+        model?: string;
+        executionTime?: number;
+    };
     error?: string;
 }
 

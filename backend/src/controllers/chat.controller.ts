@@ -86,12 +86,13 @@ export class ChatController {
                 message: message.trim()
             };
 
-            const assistantMessage = await ChatService.sendMessage(request);
+            const result = await ChatService.sendMessage(request);
 
             res.status(200).json({
                 success: true,
-                message: assistantMessage,
-                sources: assistantMessage.sources
+                message: result.message,
+                sources: result.message.sources,
+                metadata: result.metadata
             } as SendMessageResponse);
 
         } catch (error: any) {
