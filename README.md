@@ -43,9 +43,8 @@ Cognifast transforms traditional learning by allowing users to upload documents 
 ### Prerequisites
 
 - **Node.js** 18+ and npm
-- **MongoDB** (or PostgreSQL) - for database
-- **Redis** - for caching and session management
-- **Vector Database** - Pinecone, Weaviate, or Qdrant (for document embeddings)
+- **PostgreSQL**  - for database
+- **Supabase-PgVector** - (for document embeddings)
 - **AI API Key** - OpenAI or Anthropic API key
 
 ### Installation
@@ -78,21 +77,15 @@ Cognifast transforms traditional learning by allowing users to upload documents 
    NODE_ENV=development
    
    # Database
-   MONGODB_URI=mongodb://localhost:27017/cognifast
+   SUPABASE_URL=your-supabase-url
+   SUPABASE_SERVICE_KEY=your-supabase-service-key
    
    # Redis
    REDIS_URL=redis://localhost:6379
-   
-   # JWT
-   JWT_SECRET=your-secret-key
-   JWT_EXPIRES_IN=7d
+
    
    # AI Service
    OPENAI_API_KEY=your-openai-api-key
-   
-   # Vector Database
-   VECTOR_DB_URL=your-vector-db-url
-   VECTOR_DB_API_KEY=your-vector-db-api-key
    ```
 
 4. **Start the development servers**
