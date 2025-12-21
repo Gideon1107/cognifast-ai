@@ -33,10 +33,12 @@ export class ChatService {
                 .in('id', documentIds);
 
             if (docError) {
+                logger.error('Error fetching documents:', docError.message);
                 throw new Error(`Error fetching documents: ${docError.message}`);
             }
 
             if (!docs || docs.length !== documentIds.length) {
+                logger.error('One or more documents not found');
                 throw new Error('One or more documents not found');
             }
 
@@ -56,6 +58,7 @@ export class ChatService {
                 .single();
 
             if (error) {
+                logger.error(`Failed to create conversation: ${error.message}`);
                 throw new Error(`Failed to create conversation: ${error.message}`);
             }
 
@@ -71,6 +74,7 @@ export class ChatService {
 
             if (junctionError) {
                 // Rollback: delete the conversation
+                logger.error(`Failed to associate documents: ${junctionError.message}`);
                 await supabase.from('conversations').delete().eq('id', conversationId);
                 throw new Error(`Failed to associate documents: ${junctionError.message}`);
             }
@@ -133,24 +137,27 @@ export class ChatService {
                 .single();
 
             if (convError || !conversation) {
+                logger.error(`Conversation not found: ${request.conversationId}`);
                 throw new Error(`Conversation not found: ${request.conversationId}`);
             }
             logger.info(`[TIMING] Fetch conversation: ${Date.now() - convStartTime}ms`);
 
             // Get document IDs from junction table
             const docStartTime = Date.now();
-            const { data: convDocs, error: convDocsError } = await supabase
+            const { data: convoDocs, error: convoDocsError } = await supabase
                 .from('conversation_documents')
                 .select('document_id')
                 .eq('conversation_id', request.conversationId);
 
-            if (convDocsError) {
-                throw new Error(`Failed to fetch conversation documents: ${convDocsError.message}`);
+            if (convoDocsError) {
+                logger.error(`Failed to fetch conversation documents: ${convoDocsError.message}`);
+                throw new Error(`Failed to fetch conversation documents: ${convoDocsError.message}`);
             }
 
-            const documentIds = (convDocs || []).map(cd => cd.document_id);
+            const documentIds = (convoDocs || []).map(cd => cd.document_id);
 
             if (documentIds.length === 0) {
+                logger.error('No documents associated with this conversation');
                 throw new Error('No documents associated with this conversation');
             }
             logger.info(`[TIMING] Fetch document IDs: ${Date.now() - docStartTime}ms`);
@@ -164,6 +171,7 @@ export class ChatService {
                 .order('created_at', { ascending: true });
 
             if (msgError) {
+                logger.error(`Failed to fetch messages: ${msgError.message}`);
                 throw new Error(`Failed to fetch messages: ${msgError.message}`);
             }
             logger.info(`[TIMING] Fetch message history: ${Date.now() - historyStartTime}ms`);
@@ -232,6 +240,7 @@ export class ChatService {
                 logger.error('Final state messages:', finalState.messages.map(m => ({ role: m.role, contentLength: m.content?.length })));
                 logger.error(`Final state quality: ${finalState.responseQuality}`);
                 logger.error(`Final state retry count: ${finalState.retryCount}`);
+                logger.error('No assistant message generated');
                 throw new Error('No assistant message generated');
             }
 
@@ -296,6 +305,7 @@ export class ChatService {
                 .single();
 
             if (convError || !conversation) {
+                logger.error(`Conversation not found: ${conversationId}`);
                 throw new Error(`Conversation not found: ${conversationId}`);
             }
 
@@ -306,6 +316,7 @@ export class ChatService {
                 .eq('conversation_id', conversationId);
 
             if (convDocsError) {
+                logger.error(`Failed to fetch conversation documents: ${convDocsError.message}`);
                 throw new Error(`Failed to fetch conversation documents: ${convDocsError.message}`);
             }
 
@@ -329,6 +340,7 @@ export class ChatService {
                 .order('created_at', { ascending: true});
 
             if (msgError) {
+                logger.error(`Failed to fetch messages: ${msgError.message}`);
                 throw new Error(`Failed to fetch messages: ${msgError.message}`);
             }
 
@@ -371,6 +383,7 @@ export class ChatService {
                 .eq('document_id', documentId);
 
             if (junctionError) {
+                logger.error(`Failed to fetch conversations: ${junctionError.message}`);
                 throw new Error(`Failed to fetch conversations: ${junctionError.message}`);
             }
 
@@ -388,6 +401,7 @@ export class ChatService {
                 .order('updated_at', { ascending: false });
 
             if (error) {
+                logger.error(`Failed to fetch conversations: ${error.message}`);
                 throw new Error(`Failed to fetch conversations: ${error.message}`);
             }
 
@@ -440,6 +454,7 @@ export class ChatService {
                 .eq('id', conversationId);
 
             if (error) {
+                logger.error(`Failed to delete conversation: ${error.message}`);
                 throw new Error(`Failed to delete conversation: ${error.message}`);
             }
 
@@ -464,6 +479,7 @@ export class ChatService {
                 .single();
 
             if (convError || !conversation) {
+                logger.error(`Conversation not found: ${request.conversationId}`);
                 throw new Error(`Conversation not found: ${request.conversationId}`);
             }
 
@@ -474,12 +490,14 @@ export class ChatService {
                 .eq('conversation_id', request.conversationId);
 
             if (convDocsError) {
+                logger.error(`Failed to fetch conversation documents: ${convDocsError.message}`);
                 throw new Error(`Failed to fetch conversation documents: ${convDocsError.message}`);
             }
 
             const documentIds = (convDocs || []).map(cd => cd.document_id);
 
             if (documentIds.length === 0) {
+                logger.error('No documents associated with this conversation');
                 throw new Error('No documents associated with this conversation');
             }
 
@@ -491,6 +509,7 @@ export class ChatService {
                 .order('created_at', { ascending: true });
 
             if (msgError) {
+                logger.error(`Failed to fetch messages: ${msgError.message}`);
                 throw new Error(`Failed to fetch messages: ${msgError.message}`);
             }
 

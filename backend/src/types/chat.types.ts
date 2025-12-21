@@ -1,50 +1,36 @@
 import { RetrievedChunk as RetrievedChunkType } from '../services/retrieval.service';
 
+// Import and re-export shared types (used by frontend too)
+import type {
+    MessageRole,
+    Message,
+    MessageSource,
+    Conversation,
+    StartConversationRequest,
+    StartConversationResponse,
+    SendMessageRequest,
+    SendMessageResponse,
+    GetConversationResponse,
+    DeleteConversationResponse
+} from '@shared/types';
+
+export type {
+    MessageRole,
+    Message,
+    MessageSource,
+    Conversation,
+    StartConversationRequest,
+    StartConversationResponse,
+    SendMessageRequest,
+    SendMessageResponse,
+    GetConversationResponse,
+    DeleteConversationResponse
+};
+
 /**
  * Re-export for convenience
  */
 export type RetrievedChunk = RetrievedChunkType;
-
-/**
- * Message role in a conversation
- */
-export type MessageRole = 'user' | 'assistant' | 'system';
-
-/**
- * Single message in a conversation
- */
-export interface Message {
-    id?: string;
-    conversationId: string;
-    role: MessageRole;
-    content: string;
-    sources?: MessageSource[];
-    createdAt?: string;
-}
-
-/**
- * Source citation for a message
- */
-export interface MessageSource {
-    chunkId: string;
-    documentId: string;
-    documentName: string; // Name of the document (e.g., "Resume.pdf")
-    chunkText: string;
-    chunkIndex: number; // Index of the chunk within the document
-    similarity: number;
-}
-
-/**
- * Conversation metadata
- */
-export interface Conversation {
-    id: string;
-    documentIds: string[]; // Array of document IDs (1 or more)
-    documentNames?: string[]; // Array of document names for display
-    title?: string;
-    createdAt: string;
-    updatedAt: string;
-}
 
 /**
  * Router agent decision types
@@ -78,25 +64,12 @@ export interface ConversationState {
 }
 
 /**
- * Request/Response types for Chat API
+ * Internal Backend Types (not shared with frontend)
  */
-export interface StartConversationRequest {
-    documentIds: string[]; // Array of 1 or more document IDs
-    initialMessage?: string;
-}
 
-export interface StartConversationResponse {
-    success: boolean;
-    conversation: Conversation;
-    messages?: Message[]; // Initial message exchange if initialMessage was provided
-    error?: string;
-}
-
-export interface SendMessageRequest {
-    conversationId: string;
-    message: string;
-}
-
+/**
+ * Internal service layer result (includes more metadata than API response)
+ */
 export interface SendMessageResult {
     message: Message;
     metadata: {
@@ -106,30 +79,5 @@ export interface SendMessageResult {
         startTime?: number;
         endTime?: number;
     };
-}
-
-export interface SendMessageResponse {
-    success: boolean;
-    message: Message;
-    sources?: MessageSource[];
-    metadata?: {
-        totalTokens?: number;
-        model?: string;
-        executionTime?: number;
-    };
-    error?: string;
-}
-
-export interface GetConversationResponse {
-    success: boolean;
-    conversation: Conversation;
-    messages: Message[];
-    error?: string;
-}
-
-export interface DeleteConversationResponse {
-    success: boolean;
-    message: string;
-    error?: string;
 }
 

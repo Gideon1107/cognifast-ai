@@ -7,6 +7,9 @@ import { DocumentMetadata, DocumentUploadResponse } from '../types/document.type
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('DOCUMENT-CONTROLLER');
 
 export class DocumentController {
     /**
@@ -30,15 +33,15 @@ export class DocumentController {
             const fileSize = DocumentService.getFileSize(filePath);
 
             // Extract text from the document
-            console.log(`[INFO-[UPLOAD-DOCUMENT] Extracting text from ${originalName}...`);
+            logger.info(`Extracting text from ${originalName}...`);
             const extractedText = await DocumentService.extractText(filePath, fileType);
-            console.log(`[INFO-[UPLOAD-DOCUMENT] Extracted ${extractedText.length} characters from document`);
+            logger.info(`Extracted ${extractedText.length} characters from document`);
 
             // Upload to Supabase Storage
-            console.log('[INFO-[UPLOAD-DOCUMENT] Uploading file to Supabase Storage...');
+            logger.info('Uploading file to Supabase Storage...');
             const storageService = new StorageService();
             const { publicUrl, path: storagePath } = await storageService.uploadFile(filePath, originalName);
-            console.log(`[INFO-[UPLOAD-DOCUMENT] File uploaded to Supabase: ${publicUrl}`);
+            logger.info(`File uploaded to Supabase: ${publicUrl}`);
 
             // Create document metadata
             const documentData: DocumentMetadata = {
@@ -71,14 +74,14 @@ export class DocumentController {
                 .single();
 
             if (error) {
-                console.error('Error saving document to database:', error);
+                logger.error(`Error saving document to database: ${error.message}`);
                 
                 // Clean up: delete from Supabase Storage and local file
                 try {
                     await storageService.deleteFile(storagePath);
                     fs.unlinkSync(filePath);
                 } catch (cleanupError) {
-                    console.error('Error during cleanup:', cleanupError);
+                    logger.error(`Error during cleanup: ${cleanupError}`);
                 }
 
                 res.status(500).json({
@@ -89,24 +92,23 @@ export class DocumentController {
                 return;
             }
 
-            console.log(`[INFO-[UPLOAD-DOCUMENT] Document saved successfully: ${documentData.id}`);
+            logger.info(`Document saved successfully: ${documentData.id}`);
 
             // Clean up local file after successful database save
             try {
                 fs.unlinkSync(filePath);
-                console.log('[INFO-[UPLOAD-DOCUMENT] Local file cleaned up');
+                logger.info('Local file cleaned up');
             } catch (cleanupError) {
-                console.error('[ERROR-[UPLOAD-DOCUMENT] Error deleting local file:', cleanupError);
-                // Don't fail the request if cleanup fails
+                logger.error(`Error deleting local file: ${cleanupError}`);
             }
 
-            // Generate embeddings
+            // Process document: chunk and generate embeddings
             try {
-                console.log('[INFO-[UPLOAD-DOCUMENT] Generating embeddings...');
+                logger.info('Generating embeddings...');
                 const embeddingService = new EmbeddingService();
                 const chunksWithEmbeddings = await embeddingService.processDocument(extractedText);
                 
-                console.log(`[INFO-[UPLOAD-DOCUMENT] Generated ${chunksWithEmbeddings.length} chunks with embeddings`);
+                logger.info(`Generated ${chunksWithEmbeddings.length} chunks with embeddings`);
 
                 // Save chunks and embeddings to database
                 const chunkInserts = chunksWithEmbeddings.map(({ chunk, embedding }) => ({
@@ -121,12 +123,12 @@ export class DocumentController {
                     .insert(chunkInserts);
 
                 if (chunkError) {
-                    console.error('[ERROR-[UPLOAD-DOCUMENT] Error saving embeddings:', chunkError);
+                    logger.error(`Error saving embeddings: ${chunkError}`);
                 } else {
-                    console.log('[INFO-[UPLOAD-DOCUMENT] Embeddings saved successfully');
+                    logger.info('Embeddings saved successfully');
                 }
             } catch (embeddingError: any) {
-                console.error('Error generating embeddings:', embeddingError);
+                logger.error(`Error generating embeddings: ${embeddingError}`);
             }
 
             res.status(201).json({
@@ -145,15 +147,15 @@ export class DocumentController {
             } as DocumentUploadResponse);
 
         } catch (error: any) {
-            console.error('Error uploading document:', error);
+            logger.error(`Error uploading document: ${error.message}`);
 
             // Clean up uploaded file if processing fails
             if (req.file) {
                 try {
                     fs.unlinkSync(req.file.path);
-                    console.log('Local file cleaned up after error');
+                    logger.info('Local file cleaned up after error');
                 } catch (unlinkError) {
-                    console.error('Error deleting local file:', unlinkError);
+                    logger.error(`Error deleting local file: ${unlinkError}`);
                 }
             }
 

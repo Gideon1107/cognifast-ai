@@ -32,7 +32,7 @@ const logger = createLogger('CHAT-GRAPH');
 // Define the state annotation
 const StateAnnotation = Annotation.Root({
     conversationId: Annotation<string>,
-    documentIds: Annotation<string[]>, // Changed to array for multi-document support
+    documentIds: Annotation<string[]>,
     messages: Annotation<Message[]>,
     currentQuery: Annotation<string>,
     retrievedChunks: Annotation<RetrievedChunk[]>,

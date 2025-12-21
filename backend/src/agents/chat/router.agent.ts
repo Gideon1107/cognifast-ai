@@ -2,7 +2,7 @@
  * Router Agent - Analyzes user intent and routes to appropriate action
  * 
  * Decision Flow:
- * - 'retrieve': Query needs document context (most questions)
+ * - 'retrieve': Query needs document context
  * - 'direct_answer': Can answer without retrieval (greetings, thanks, clarifications)
  * - 'clarify': Query is unclear or ambiguous
  */
@@ -26,7 +26,7 @@ export class RouterAgent {
 
     /**
      * Analyze user query and decide routing strategy
-     * LLM-only routing (no heuristics), with a prompt biased toward retrieval when documents are attached
+     * LLM-only routing with a prompt biased toward retrieval when documents are attached
      */
     async execute(state: ConversationState): Promise<Partial<ConversationState>> {
         const startTime = Date.now();
@@ -95,7 +95,6 @@ Return only one word: retrieve OR direct_answer OR clarify`;
 
         } catch (error: any) {
             logger.error(`Error: ${error.message}`);
-            // Default to retrieve on error
             return {
                 routerDecision: 'retrieve',
                 metadata: state.metadata

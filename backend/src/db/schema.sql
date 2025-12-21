@@ -1,5 +1,4 @@
--- Create documents table in Supabase
--- Run this SQL in your Supabase SQL Editor
+-- Create documents table
 
 CREATE TABLE IF NOT EXISTS documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

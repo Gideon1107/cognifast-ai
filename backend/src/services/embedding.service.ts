@@ -50,7 +50,7 @@ export class EmbeddingService {
      */
     async generateEmbeddings(chunks: DocumentChunk[]): Promise<{ chunk: DocumentChunk; embedding: number[] }[]> {
         try {
-            console.log(`[INFO-[EMBEDDING-SERVICE] Generating embeddings for ${chunks.length} chunks...`);
+            logger.info(`Generating embeddings for ${chunks.length} chunks...`);
             
             // Extract just the text for embedding
             const texts = chunks.map(chunk => chunk.text);
@@ -58,7 +58,7 @@ export class EmbeddingService {
             // Generate embeddings for all chunks
             const embeddings = await this.embeddings.embedDocuments(texts);
             
-            console.log(`[INFO-[EMBEDDING-SERVICE] Successfully generated ${embeddings.length} embeddings`);
+            logger.info(`Successfully generated ${embeddings.length} embeddings`);
             
             // Combine chunks with their embeddings
             return chunks.map((chunk, index) => ({
@@ -87,7 +87,7 @@ export class EmbeddingService {
     async processDocument(text: string): Promise<{ chunk: DocumentChunk; embedding: number[] }[]> {
         // Split text into chunks
         const chunks = await this.chunkText(text);
-        console.log(`[INFO-[EMBEDDING-SERVICE] Split document into ${chunks.length} chunks`);
+        logger.info(`Split document into ${chunks.length} chunks`);
         
         // Generate embeddings for all chunks
         return await this.generateEmbeddings(chunks);

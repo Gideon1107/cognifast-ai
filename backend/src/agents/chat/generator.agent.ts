@@ -121,10 +121,15 @@ export class GeneratorAgent {
         const uniqueDocs = new Set(state.retrievedChunks.map(c => c.documentName));
         const isMultiDoc = uniqueDocs.size > 1;
 
-        return `You are a helpful AI assistant answering questions about ${isMultiDoc ? 'multiple documents' : 'a document'}. Use the provided context to answer the user's question accurately.
+        const docReference = isMultiDoc ? 'documents' : 'document';
+        const docPlural = isMultiDoc ? 's' : '';
+        const notMentionPhrasing = isMultiDoc ? "documents don't" : "document doesn't";
+        const multiDocInstruction = isMultiDoc ? '\n5. When synthesizing information from multiple documents, attribute each piece to its source naturally' : '';
+        
+        return `You are a helpful AI assistant with access to ${isMultiDoc ? 'multiple documents' : 'a document'}. Answer the user's question naturally and conversationally.
 
-Context from Document${isMultiDoc ? 's' : ''}:
-${context || "No context available"}
+Available Information from Document${docPlural}:
+${context || "No information available"}
 
 Conversation History:
 ${conversationHistory || "No previous messages"}
@@ -132,11 +137,22 @@ ${conversationHistory || "No previous messages"}
 User Question: ${state.currentQuery}
 
 Instructions:
-1. Answer based on the context provided
-2. If the context doesn't contain the answer, say so clearly
-3. When citing information, mention the document name like: [Source 1 - ${state.retrievedChunks[0]?.documentName || 'Document'}]
-4. Be concise but complete${isMultiDoc ? '\n5. When comparing or synthesizing information from multiple documents, clearly attribute each piece to its source' : ''}
-5. Maintain conversational tone
+1. Answer naturally as if you've read the ${docReference} yourself
+2. DO NOT mention "context", "provided context", or "the context shows" - speak as if you have direct knowledge
+3. ALWAYS cite the document source when providing information - use the format [Source 1 - DocumentName.pdf] or mention "According to DocumentName.pdf" or "In DocumentName.pdf"
+4. DO NOT say generic things like "This information is detailed in the document" or "as mentioned in various sections" - use SPECIFIC source citations with document names
+5. If you don't have the information to answer, say: "I don't see that information in the ${docReference}" or "The ${notMentionPhrasing} mention that"${multiDocInstruction}
+6. Be conversational, helpful, and concise
+7. DO NOT end with generic phrases like "feel free to ask", "let me know if", or "if you have more questions" - just answer the question and stop naturally
+8. DO NOT end with similar generic phrases like "feel free to ask", "let me know if", "if there's any more information you need", "if you have any other questions", etc.
+9. JUST ANSWER AND STOP NATURALLY
+10. DO NOT ASK USER ABOUT THEIR DAY
+
+Example of GOOD citation:
+"He worked on DevConnect, a web chat application [Source 1 - Resume.pdf]. According to [Source 2 - Portfolio.pdf], he also built Footnation."
+
+Example of BAD citation:
+"He worked on several projects. This information is detailed in the document."
 
 Answer:`;
     }
@@ -150,27 +166,40 @@ Answer:`;
             .map((m) => `${m.role}: ${m.content}`)
             .join("\n");
 
-        return `You are a helpful AI assistant. Respond to the user's message naturally.
+        return `You are a helpful AI assistant. Respond to the user's message naturally and conversationally.
 
 Conversation History:
 ${conversationHistory || "No previous messages"}
 
 User Message: ${state.currentQuery}
 
-Respond naturally and helpfully:`;
+Instructions:
+- Respond naturally as a human would
+- DO NOT end with similar generic phrases like "feel free to ask", "let me know if", "if there's any more information you need", "if you have any other questions", etc.
+- JUST ANSWER AND STOP NATURALLY
+- DO NOT ASK USER ABOUT THEIR DAY
+
+Your response:`;
     }
 
     /**
      * Build prompt for clarification requests
      */
     private buildClarificationPrompt(state: ConversationState): string {
-        return `You are a helpful AI assistant. The user's query is unclear.
+        return `You are a helpful AI assistant. The user's message is unclear and needs clarification.
 
-User Query: ${state.currentQuery}
+User Message: ${state.currentQuery}
 
-Politely ask the user to clarify their question. Be specific about what information you need.
+Instructions:
+- Politely ask what they mean or what specific information they need
+- Be conversational and natural
+- Avoid phrases like "feel free to" or "please let me know"
+- Just ask your clarifying question directly and naturally
+- DO NOT end with similar generic phrases like "feel free to ask", "let me know if", "if there's any more information you need", "if you have any other questions", etc.
+- JUST ANSWER AND STOP NATURALLY
+- DO NOT ASK USER ABOUT THEIR DAY
 
-Clarification Request:`;
+Your response:`;
     }
 }
 

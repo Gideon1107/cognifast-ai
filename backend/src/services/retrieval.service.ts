@@ -10,7 +10,7 @@ const logger = createLogger('RETRIEVAL-SERVICE');
 export interface RetrievedChunk {
     id: string;
     documentId: string;
-    documentName: string; // Name of the document (e.g., "Resume.pdf")
+    documentName: string; // Name of the document
     chunkText: string;
     chunkIndex: number;
     similarity: number; // 0-1, higher is more similar
@@ -40,14 +40,14 @@ export class RetrievalService {
         topK: number = 5
     ): Promise<RetrievedChunk[]> {
         try {
-            console.log(`[INFO-[RETRIEVAL-SERVICE] Retrieving top ${topK} chunks for query: "${query.substring(0, 50)}..." from ${documentIds.length} document(s)`);
+            logger.info(`Retrieving top ${topK} chunks for query: "${query.substring(0, 50)}..." from ${documentIds.length} document(s)`);
             if (!documentIds || documentIds.length === 0) {
                 throw new Error('documentIds must be a non-empty array');
             }
 
             // Step 1: Generate query embedding
             const queryEmbedding = await this.embeddingService.generateQueryEmbedding(query);
-            console.log(`[INFO-[RETRIEVAL-SERVICE] Generated embedding of length: ${queryEmbedding.length}`);
+            logger.info(`Generated embedding of length: ${queryEmbedding.length}`);
             
             // Validate embedding
             const hasNaN = queryEmbedding.some(v => isNaN(v));
@@ -55,7 +55,7 @@ export class RetrievalService {
             const allZeros = queryEmbedding.every(v => v === 0);
             
             if (hasNaN || hasInfinity || allZeros) {
-                console.error(`[ERROR-[RETRIEVAL-SERVICE] Invalid embedding detected!`, {
+                logger.error(`Invalid embedding detected!`, {
                     hasNaN,
                     hasInfinity,
                     allZeros
@@ -66,9 +66,9 @@ export class RetrievalService {
             // Step 2: Call RPC with detailed diagnostics
             const matchCount = topK;
             
-            console.log(`[DEBUG-[RETRIEVAL-SERVICE] === RPC CALL DETAILS ===`);
-            console.log(`[DEBUG-[RETRIEVAL-SERVICE] Requested documentIds: [${documentIds.join(', ')}]`);
-            console.log(`[DEBUG-[RETRIEVAL-SERVICE] Match count: ${matchCount}, topK: ${topK}`);
+            logger.debug(`=== RPC CALL DETAILS ===`);
+            logger.debug(`Requested documentIds: [${documentIds.join(', ')}]`);
+            logger.debug(`Match count: ${matchCount}, topK: ${topK}`);
             
             const { data, error } = await supabase.rpc('match_documents_chunks', {
                 query_embedding: queryEmbedding,
@@ -77,22 +77,21 @@ export class RetrievalService {
             });
 
             if (error) {
-                console.log(JSON.stringify(error, null, 2));
-                console.error(`[ERROR-[RETRIEVAL-SERVICE] RPC error: ${error.message}`);
-                console.warn(`[WARN-[RETRIEVAL-SERVICE] Falling back to direct search`);
+                logger.error(JSON.stringify(error, null, 2));
+                logger.error(`RPC error: ${error.message}`);
+                logger.warn(`Falling back to direct search`);
                 return await this.directSearch(queryEmbedding, documentIds, topK);
             }
 
-            console.log(`[DEBUG-[RETRIEVAL-SERVICE] RPC returned ${data?.length || 0} total chunks`);
+            logger.debug(`RPC returned ${data?.length || 0} total chunks`);
             
             if (data && data.length > 0) {
-                // Show what document IDs RPC actually returned
                 const returnedDocIds = [...new Set(data.map((d: any) => d.document_id))];
-                console.log(`[DEBUG-[RETRIEVAL-SERVICE] RPC returned chunks from documents: [${returnedDocIds.join(', ')}]`);
+                logger.debug(`RPC returned chunks from documents: [${returnedDocIds.join(', ')}]`);
             }
 
             if (!data || data.length === 0) {
-                console.error(`[ERROR-[RETRIEVAL-SERVICE] ⚠️ RPC returned 0 chunks!`);
+                logger.error(`⚠️ RPC returned 0 chunks!`);
                 
                 // Check if chunks exist for these document IDs
                 const { data: chunkCount } = await supabase
@@ -100,8 +99,8 @@ export class RetrievalService {
                     .select('document_id', { count: 'exact' })
                     .in('document_id', documentIds);
                 
-                console.error(`[ERROR-[RETRIEVAL-SERVICE] Chunks exist in DB for these docs:`, chunkCount?.length || 0);
-                console.warn(`[WARN-[RETRIEVAL-SERVICE] Falling back to direct search`);
+                logger.error(`Chunks exist in DB for these docs:`, chunkCount?.length || 0);
+                logger.warn(`Falling back to direct search`);
                 return await this.directSearch(queryEmbedding, documentIds, topK);
             }
 
@@ -109,12 +108,12 @@ export class RetrievalService {
 
             const enrichedChunks = await this.enrichWithDocumentNames(topChunks);
             const avgSimilarity = enrichedChunks.reduce((sum, c) => sum + c.similarity, 0) / enrichedChunks.length;
-            console.log(`[INFO-[RETRIEVAL-SERVICE] ✅ RPC SUCCESS: ${enrichedChunks.length} chunks, avg similarity: ${avgSimilarity.toFixed(3)}`);
+            logger.info(`✅ RPC SUCCESS: ${enrichedChunks.length} chunks, avg similarity: ${avgSimilarity.toFixed(3)}`);
 
             return enrichedChunks;
 
         } catch (error: any) {
-            console.error('[ERROR-[RETRIEVAL-SERVICE] Error in retrieveRelevantChunks:', error);
+            logger.error(`Error in retrieveRelevantChunks: ${error.message}`);
             throw new Error(`Failed to retrieve chunks: ${error.message}`);
         }
     }
@@ -150,7 +149,7 @@ export class RetrievalService {
                 similarity: Number(chunk.similarity)
             }));
         } catch (error: any) {
-            console.error('[ERROR-[RETRIEVAL-SERVICE] Error enriching with document names:', error);
+            logger.error(`Error enriching with document names: ${error.message}`);
             // Return chunks without names as fallback
             return chunks.map((chunk: any) => ({
                 id: chunk.id,
@@ -173,7 +172,7 @@ export class RetrievalService {
         topK: number
     ): Promise<RetrievedChunk[]> {
         try {
-            console.log(`[INFO-[RETRIEVAL-SERVICE] Performing direct search for ${documentIds.length} document(s)`);
+            logger.info(`Performing direct search for ${documentIds.length} document(s)`);
 
             // Get all chunks from specified documents
             const { data, error } = await supabase
@@ -185,7 +184,7 @@ export class RetrievalService {
             if (error) throw error;
             if (!data || data.length === 0) return [];
 
-            console.log(`[INFO-[RETRIEVAL-SERVICE] Retrieved ${data.length} chunks from database`);
+            logger.info(`Retrieved ${data.length} chunks from database`);
 
             // Calculate cosine similarity manually
             const chunksWithSimilarity: Array<{
@@ -198,7 +197,7 @@ export class RetrievalService {
 
             for (const chunk of data) {
                 try {
-                    // Parse embedding - Supabase returns pgvector as string like "[0.1,0.2,...]"
+                    // Parse embedding
                     let chunkEmbedding: number[];
                     if (typeof chunk.embedding === 'string') {
                         // Remove brackets and parse
@@ -206,7 +205,7 @@ export class RetrievalService {
                     } else if (Array.isArray(chunk.embedding)) {
                         chunkEmbedding = chunk.embedding;
                     } else {
-                        console.error(`[ERROR-[RETRIEVAL-SERVICE] Invalid embedding format for chunk ${chunk.id}`);
+                        logger.error(`Invalid embedding format for chunk ${chunk.id}`);
                         continue;
                     }
 
@@ -219,7 +218,7 @@ export class RetrievalService {
                         similarity: similarity
                     });
                 } catch (error: any) {
-                    console.error(`[ERROR-[RETRIEVAL-SERVICE] Error processing chunk ${chunk.id}: ${error.message}`);
+                    logger.error(`Error processing chunk ${chunk.id}: ${error.message}`);
                     // Skip this chunk and continue
                 }
             }
@@ -228,11 +227,11 @@ export class RetrievalService {
             chunksWithSimilarity.sort((a, b) => b.similarity - a.similarity);
             const topChunks = chunksWithSimilarity.slice(0, topK);
 
-            console.log(`[DEBUG-[RETRIEVAL-SERVICE] Direct search found ${chunksWithSimilarity.length} chunks total`);
-            console.log(`[DEBUG-[RETRIEVAL-SERVICE] Top 5 similarities:`, 
+            logger.debug(`Direct search found ${chunksWithSimilarity.length} chunks total`);
+            logger.debug(`Top 5 similarities:`, 
                 chunksWithSimilarity.slice(0, 5).map(c => c.similarity.toFixed(3))
             );
-            console.log(`[INFO-[RETRIEVAL-SERVICE] Returning ${topChunks.length} chunks, top similarity: ${topChunks[0]?.similarity.toFixed(3) || 'N/A'}`);
+            logger.info(`Returning ${topChunks.length} chunks, top similarity: ${topChunks[0]?.similarity.toFixed(3) || 'N/A'}`);
 
             // Enrich with document names (don't convert similarity, enrichWithDocumentNames expects similarity as-is)
             const enriched = topChunks.map(c => ({
@@ -258,7 +257,7 @@ export class RetrievalService {
             }));
 
         } catch (error: any) {
-            console.error(`[ERROR-[RETRIEVAL-SERVICE] Direct search failed: ${error.message}`);
+            logger.error(`Direct search failed: ${error.message}`);
             throw new Error(`Direct search failed: ${error.message}`);
         }
     }
@@ -268,8 +267,8 @@ export class RetrievalService {
      */
     private cosineSimilarity(vecA: number[], vecB: number[]): number {
         if (vecA.length !== vecB.length) {
-            console.error(`[ERROR-[RETRIEVAL-SERVICE] Vector length mismatch: ${vecA.length} vs ${vecB.length}`);
-            throw new Error(`[ERROR-[RETRIEVAL-SERVICE] Vectors must have same length: ${vecA.length} vs ${vecB.length}`);
+            logger.error(`Vector length mismatch: ${vecA.length} vs ${vecB.length}`);
+            throw new Error(`Vectors must have same length: ${vecA.length} vs ${vecB.length}`);
         }
 
         let dotProduct = 0;
@@ -290,7 +289,7 @@ export class RetrievalService {
      */
     async getAllChunksForDocument(documentId: string): Promise<RetrievedChunk[]> {
         try {
-            console.log(`[INFO-[RETRIEVAL-SERVICE] Fetching all chunks for document: ${documentId}`);
+            logger.info(`Fetching all chunks for document: ${documentId}`);
 
             const { data, error } = await supabase
                 .from('document_chunks')
@@ -300,11 +299,11 @@ export class RetrievalService {
 
             if (error) throw error;
             if (!data || data.length === 0) {
-                console.warn(`[WARN-[RETRIEVAL-SERVICE] No chunks found for document: ${documentId}`);
+                logger.warn(`No chunks found for document: ${documentId}`);
                 return [];
             }
 
-            console.log(`[INFO-[RETRIEVAL-SERVICE] Retrieved ${data.length} chunks for document`);
+            logger.info(`Retrieved ${data.length} chunks for document`);
 
             // Fetch document name
             const { data: doc } = await supabase
@@ -325,7 +324,7 @@ export class RetrievalService {
             }));
 
         } catch (error: any) {
-            throw new Error(`[ERROR-[RETRIEVAL-SERVICE] Failed to get document chunks: ${error.message}`);
+            throw new Error(`Failed to get document chunks: ${error.message}`);
         }
     }
 
@@ -367,7 +366,8 @@ export class RetrievalService {
             }));
 
         } catch (error: any) {
-            throw new Error(`[ERROR-[RETRIEVAL-SERVICE] Failed to get chunks by IDs: ${error.message}`);
+            logger.error(`Failed to get chunks by IDs: ${error.message}`);
+            throw new Error(`Failed to get chunks by IDs: ${error.message}`);
         }
     }
 }

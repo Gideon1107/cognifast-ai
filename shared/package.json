@@ -1,0 +1,15 @@
+{
+  "name": "@cognifast/shared",
+  "version": "1.0.0",
+  "description": "Shared types and constants for Cognifast AI frontend and backend",
+  "main": "types/index.ts",
+  "types": "types/index.ts",
+  "private": true,
+  "scripts": {},
+  "keywords": [
+    "types",
+    "shared",
+    "typescript"
+  ]
+}
+

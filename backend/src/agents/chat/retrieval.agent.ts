@@ -58,7 +58,6 @@ export class RetrievalAgent {
 
         } catch (error: any) {
             logger.error(`Error: ${error.message}`);
-            // Return empty chunks on error
             return {
                 retrievedChunks: []
             };

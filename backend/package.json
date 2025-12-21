@@ -1,7 +1,7 @@
 {
-  "name": "cognifast-ai-backend",
+  "name": "@cognifast/backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Cognifast AI Backend",
   "license": "ISC",
   "author": "Gideon Ayeni",
   "type": "commonjs",
