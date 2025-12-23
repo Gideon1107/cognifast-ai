@@ -110,30 +110,65 @@ Cognifast transforms traditional learning by allowing users to upload documents 
 
 ## 📖 Usage
 
-### 1. Upload a Document
-- Navigate to the Dashboard
-- Click "Upload Document"
-- Select a PDF, DOC, DOCX, or TXT file
-- Wait for AI processing to complete
+### 1. Getting Started
+- Visit the **Landing Page** to learn about Cognifast AI
+- Click **"Try Cognifast AI"** to navigate to the Dashboard
+- Or click **"Get Started"** in the navigation bar
 
-### 2. View Document Summary
-- Open your uploaded document
-- Navigate to the "Summary" tab
-- Review AI-generated summary and key points
+### 2. Dashboard - My Classrooms
+- View all your **classrooms** (conversations) in one place
+- See recent classrooms with document information
+- Click on any classroom card to open it in the Chat interface
+- Click **"Create new"** button to start a new classroom
 
-### 3. Chat with AI
-- Open your document conversation
-- Go to the "Chat" tab
-- Ask questions about the document content
-- Get intelligent, context-aware responses
+### 3. Create a New Classroom
+- Click **"Create new"** from the Dashboard
+- You'll be taken to the Chat interface with an upload modal
+- **Upload a document**:
+  - Drag and drop a file, or click to browse
+  - Supported formats: PDF, DOCX, TXT (max 10MB)
+  - Wait for upload and processing to complete
+- Once uploaded, the modal closes and you're in the Chat UI with your document
 
-### 4. Generate and Take Quiz
-- Open your document
-- Navigate to the "Quiz" tab
-- Select difficulty level and number of questions
-- Click "Generate Quiz"
-- Answer the questions
-- Submit to get instant feedback and scores
+### 4. Chat Interface
+The Chat interface features a **3-column layout**:
+
+- **Sources (Left - 15%)**: 
+  - Displays the document(s) associated with the current classroom
+  - Shows document names and metadata
+
+- **Chat (Center - 55%)**:
+  - Main conversation area
+  - Type your questions in the input field
+  - Send messages to get AI responses
+  - **Real-time streaming**: Responses appear token-by-token as the AI generates them
+  - **Loading states**: See progress messages like "Looking for cues...", "Reviewing document...", "Generating response..."
+  - Messages are automatically saved and persist across page reloads
+
+- **Studio (Right - 30%)**:
+  - Reserved for future features (quizzes, analytics, etc.)
+  - Currently displays placeholder content
+
+### 5. Chatting with AI
+- Type your question in the chat input
+- Press **Enter** or click **Send** to submit
+- The AI will:
+  1. **Route** your query (determine if document retrieval is needed)
+  2. **Retrieve** relevant document chunks (if needed)
+  3. **Generate** a response with real-time token streaming
+  4. **Evaluate** response quality (may retry if quality is poor)
+- Responses are **context-aware** and grounded in your uploaded documents
+- Bold text and lists in AI responses are automatically formatted
+
+### 6. Documents Page
+- Navigate to **Documents** from the navigation bar
+- Document management features coming soon
+
+### 7. Navigation
+- Use the **Navbar** to navigate between:
+  - **Dashboard**: View all classrooms
+  - **Documents**: Manage documents (coming soon)
+  - **Chat**: Direct access to chat interface
 
 ## 🛠️ Tech Stack
 
