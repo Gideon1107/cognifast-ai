@@ -304,7 +304,7 @@ export function Dashboard() {
 
       {/* Delete Confirmation Dialog */}
       {deletingConversationId && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-9999 flex items-center justify-center" role="dialog" aria-modal="true">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
