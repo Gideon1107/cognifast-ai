@@ -13,6 +13,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   messages: new Map(),
   currentConversationId: null,
   streamingContent: new Map(),
+  loadingState: new Map(),
 
   // ============================================
   // Conversation Actions
@@ -192,11 +193,42 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   finalizeStreamingMessage: (conversationId: string, message: Message) => {
     const state = get();
     
-    // Clear streaming state
+    // Clear streaming and loading state
     state.clearStreaming(conversationId);
+    state.clearLoadingState(conversationId);
     
     // Add the finalized message
     state.addMessage(conversationId, message);
+  },
+
+  // ============================================
+  // Loading Actions
+  // ============================================
+
+  /**
+   * Set loading state for a conversation
+   */
+  setLoadingState: (conversationId: string, stage: string, message: string) => {
+    set((state) => {
+      const newLoading = new Map(state.loadingState);
+      if (message) {
+        newLoading.set(conversationId, { stage, message });
+      } else {
+        newLoading.delete(conversationId);
+      }
+      return { loadingState: newLoading };
+    });
+  },
+
+  /**
+   * Clear loading state for a conversation
+   */
+  clearLoadingState: (conversationId: string) => {
+    set((state) => {
+      const newLoading = new Map(state.loadingState);
+      newLoading.delete(conversationId);
+      return { loadingState: newLoading };
+    });
   },
 
   // ============================================
@@ -239,6 +271,22 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   isStreaming: (conversationId: string) => {
     const streaming = get().streamingContent.get(conversationId);
     return !!streaming && streaming.content.length > 0;
+  },
+
+  /**
+   * Check if a conversation is currently loading
+   */
+  isLoading: (conversationId: string) => {
+    const loading = get().loadingState.get(conversationId);
+    return !!loading && loading.message.length > 0;
+  },
+
+  /**
+   * Get loading message for a conversation
+   */
+  getLoadingMessage: (conversationId: string) => {
+    const loading = get().loadingState.get(conversationId);
+    return loading?.message || null;
   },
 }));
 

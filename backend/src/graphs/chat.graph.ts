@@ -162,23 +162,44 @@ export async function executeChatGraph(initialState: ConversationState): Promise
 /**
  * Stream the chat graph execution
  * 
- * This will be useful for WebSocket streaming in the future
- * For now, it returns an async iterator of state updates
+ * Returns an async iterator of state updates from the graph
+ * Each yield contains the updated state after each node execution
  */
-export async function* streamChatGraph(initialState: ConversationState) {
+export async function* streamChatGraph(initialState: ConversationState): AsyncGenerator<Partial<ConversationState>, void, unknown> {
     try {
         logger.info('Chat Graph Streaming Started');
         
-        // Stream graph execution
-        for await (const state of await chatGraph.stream(initialState)) {
-            logger.info('State update:', Object.keys(state));
-            yield state;
+        // Get the stream and iterate over it
+        const stream = await chatGraph.stream(initialState);
+        
+        // Stream graph execution - yields state after each node
+        for await (const stateUpdate of stream) {
+            // stateUpdate is an object with node names as keys
+            // Each key contains the state after that node executed
+            const stateUpdateAny = stateUpdate as Record<string, Partial<ConversationState>>;
+            const nodeNames = Object.keys(stateUpdateAny);
+            
+            for (const nodeName of nodeNames) {
+                const nodeState = stateUpdateAny[nodeName];
+                if (nodeState) {
+                    logger.info(`[CHAT-GRAPH] Node '${nodeName}' completed`);
+                    
+                    // Add node name to state for stage detection
+                    const stateWithNode = {
+                        ...nodeState,
+                        _currentNode: nodeName
+                    };
+                    
+                    // Yield the state update with node info
+                    yield stateWithNode;
+                }
+            }
         }
         
         logger.info('Chat Graph Streaming Completed');
         
-    } catch (error: any) {
-        logger.error(`Error streaming chat graph: ${error.message}`);
-        throw new Error(`Chat graph streaming failed: ${error.message}`);
+    } catch (error) {
+        logger.error(`Error streaming chat graph: ${error}`);
+        throw new Error(`Chat graph streaming failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }

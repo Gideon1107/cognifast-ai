@@ -18,3 +18,10 @@
     background-clip: text;
   }
 }
+
+/* Ensure strong tags are bold */
+@layer base {
+  strong {
+    font-weight: 600;
+  }
+}

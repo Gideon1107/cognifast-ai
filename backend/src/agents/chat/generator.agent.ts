@@ -148,6 +148,24 @@ Instructions:
 9. JUST ANSWER AND STOP NATURALLY
 10. DO NOT ASK USER ABOUT THEIR DAY
 
+Formatting Requirements:
+- Use proper paragraph breaks for readability
+- Use numbered lists (1., 2., 3.) or bullet points when listing multiple items
+- Use **bold** for emphasis on key terms or important points
+- Structure longer answers with clear sections or paragraphs
+- Ensure proper spacing between paragraphs
+- Use consistent citation format throughout
+- Make the response easy to scan and read
+
+Example of GOOD formatting:
+"Several factors can disturb photosynthesis, impacting its efficiency. Key ones include:
+
+1. **Light Intensity**: Insufficient light can reduce the rate of photosynthesis, as plants rely on light energy to drive the process. Conversely, too much light can also be harmful, leading to damage in chloroplasts [Source 3 - Photosynthesis.pdf].
+
+2. **Carbon Dioxide Concentration**: A low concentration of carbon dioxide can limit the rate of photosynthesis since it's one of the essential reactants in the process. Variations in carbon dioxide levels can occur due to environmental changes or the availability of resources [Source 3 - Photosynthesis.pdf].
+
+3. **Temperature**: Photosynthesis is temperature-sensitive. Extreme temperatures can denature enzymes involved in the process, either slowing it down or stopping it altogether [Source 1 - Photosynthesis.pdf]."
+
 Example of GOOD citation:
 "He worked on DevConnect, a web chat application [Source 1 - Resume.pdf]. According to [Source 2 - Portfolio.pdf], he also built Footnation."
 
@@ -179,6 +197,14 @@ Instructions:
 - JUST ANSWER AND STOP NATURALLY
 - DO NOT ASK USER ABOUT THEIR DAY
 
+Formatting Requirements:
+- Use proper paragraph breaks for readability
+- Use numbered lists (1., 2., 3.) or bullet points when listing multiple items
+- Use **bold** for emphasis on key terms or important points
+- Structure longer answers with clear sections or paragraphs
+- Ensure proper spacing between paragraphs
+- Make the response easy to scan and read
+
 Your response:`;
     }
 
@@ -198,6 +224,12 @@ Instructions:
 - DO NOT end with similar generic phrases like "feel free to ask", "let me know if", "if there's any more information you need", "if you have any other questions", etc.
 - JUST ANSWER AND STOP NATURALLY
 - DO NOT ASK USER ABOUT THEIR DAY
+
+Formatting Requirements:
+- Use proper paragraph breaks for readability
+- Keep clarification questions concise and clear
+- Use **bold** for emphasis if needed
+- Ensure proper spacing
 
 Your response:`;
     }

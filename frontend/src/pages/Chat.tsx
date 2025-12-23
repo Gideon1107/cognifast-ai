@@ -3,7 +3,7 @@
  * 3-column layout: Sources (left) | Chat (center) | Studio (right)
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Navbar } from '../components/Navbar';
@@ -11,10 +11,10 @@ import { DocumentUploadModal } from '../components/chat/DocumentUploadModal';
 import { FileText, Send, Sparkles, BookOpen, ClipboardList, BarChart } from 'lucide-react';
 import { 
   getConversation, 
-  sendMessage as sendMessageAPI, 
   startConversation 
 } from '../lib/api';
 import { useChatStore } from '../store';
+import { useWebSocket } from '../hooks/useWebSocket';
 import type { DocumentMetadata, Message } from '@shared/types';
 
 export function Chat() {
@@ -33,7 +33,15 @@ export function Chat() {
     addMessage,
     setCurrentConversation,
     removeMessage,
+    isLoading,
+    getLoadingMessage,
   } = useChatStore();
+
+  // WebSocket hook for real-time messaging
+  const { sendMessage: sendMessageViaWebSocket } = useWebSocket({
+    conversationId: conversationId || null,
+    enabled: !!conversationId,
+  });
 
   // Determine if modal should be shown
   const isNew = searchParams.get('new') === 'true';
@@ -66,6 +74,34 @@ export function Chat() {
   // Get conversation and messages from store
   const conversation = conversationId ? getStoreConversation(conversationId) : null;
   const messages = conversationId ? getMessages(conversationId) : [];
+  const isLoadingState = conversationId ? isLoading(conversationId) : false;
+  const streamingContentMap = useChatStore((state) => state.streamingContent);
+  const streamingContent = conversationId ? streamingContentMap.get(conversationId) : null;
+
+  // Refs for scrolling
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to bottom function
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  };
+
+  // Scroll to bottom when messages change, loading state changes, or streaming content updates
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages.length, isLoadingState, streamingContent?.content]);
+
+  // Scroll to bottom when conversation loads
+  useEffect(() => {
+    if (conversationData?.success && conversationData.messages) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    }
+  }, [conversationData]);
 
   const studioOptions = [
     { id: 'audio', name: 'Audio Overview', icon: Sparkles },
@@ -106,7 +142,7 @@ export function Chat() {
     }
   };
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = () => {
     if (!message.trim() || !conversationId) return;
 
     const userMessage: Message = {
@@ -123,16 +159,11 @@ export function Chat() {
     // Optimistically add user message to store
     addMessage(conversationId, userMessage);
 
+    // Send message via WebSocket (streaming response will update store automatically)
     try {
-      const response = await sendMessageAPI(conversationId, messageContent);
-      
-      if (response.success && response.message) {
-        // Update temp user message with a permanent ID (or keep it as is)
-        // The user message stays in store, just add the assistant response
-        addMessage(conversationId, response.message);
-      }
+      sendMessageViaWebSocket(messageContent);
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error('Failed to send message via WebSocket:', error);
       // Remove optimistic message on error
       removeMessage(conversationId, userMessage.id!);
     }
@@ -253,7 +284,7 @@ export function Chat() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {messages.length === 0 ? (
+            {messages.length === 0 && (!conversationId || !isLoading(conversationId)) ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center text-gray-500">
                   <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
@@ -262,47 +293,102 @@ export function Chat() {
                 </div>
               </div>
             ) : (
-              messages.map((msg) => (
-                <div key={msg.id || `msg-${msg.createdAt}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-3xl ${msg.role === 'user' ? 'w-auto' : 'w-full'}`}>
-                    {msg.role === 'user' ? (
-                      <div className="bg-gray-900 text-white px-4 py-3 rounded-2xl">
-                        <p className="text-sm">{msg.content}</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="prose prose-sm max-w-none">
-                          <p className="text-gray-900 leading-relaxed">{msg.content}</p>
+              <>
+                {messages.map((msg) => (
+                  <div key={msg.id || `msg-${msg.createdAt}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-3xl ${msg.role === 'user' ? 'w-auto' : 'w-full'}`}>
+                      {msg.role === 'user' ? (
+                        <div className="bg-gray-900 text-white px-4 py-3 rounded-2xl">
+                          <p className="text-sm">{msg.content}</p>
                         </div>
-                        {msg.sources && Array.isArray(msg.sources) && msg.sources.length > 0 && (
-                          <div className="flex items-center gap-2 text-xs text-gray-600">
-                            <FileText className="w-3 h-3" />
-                            <span>Sources: {msg.sources.map(s => s.documentName).join(', ')}</span>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="prose prose-sm max-w-none text-gray-900 leading-relaxed">
+                            {msg.content.split('\n').map((line, idx) => {
+                              // Convert **text** to bold (handle multiple bold sections in one line)
+                              const formatBold = (text: string) => {
+                                // Match **text** but not ***text*** (which would be bold+italic)
+                                // Use a more robust pattern that handles edge cases
+                                return text.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+                              };
+                              
+                              // Check if line starts with number for lists
+                              const listMatch = line.match(/^(\d+\.\s+)(.+)$/);
+                              if (listMatch) {
+                                const listContent = formatBold(listMatch[2]);
+                                return (
+                                  <div key={idx} className="mb-2">
+                                    <span className="font-semibold">{listMatch[1]}</span>
+                                    <span dangerouslySetInnerHTML={{ __html: listContent }} />
+                                  </div>
+                                );
+                              }
+                              
+                              // Regular paragraph
+                              if (line.trim()) {
+                                const formattedLine = formatBold(line);
+                                return (
+                                  <p key={idx} className="mb-2" dangerouslySetInnerHTML={{ __html: formattedLine }} />
+                                );
+                              }
+                              
+                              // Empty line for spacing
+                              return <br key={idx} />;
+                            })}
                           </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
-                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                            </svg>
-                          </button>
-                          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
-                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                            </svg>
-                          </button>
-                          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
-                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
-                            </svg>
-                          </button>
+                          {msg.sources && Array.isArray(msg.sources) && msg.sources.length > 0 && (
+                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                              <FileText className="w-3 h-3" />
+                              <span>Sources: {msg.sources.map(s => s.documentName).join(', ')}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+                              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                              </svg>
+                            </button>
+                            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+                              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                              </svg>
+                            </button>
+                            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+                              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+
+                {/* Loading indicator - shows when loading and not streaming */}
+                {conversationId && isLoading(conversationId) && (
+                  <div className="flex justify-start">
+                    <div className="max-w-3xl w-full">
+                      <div className="flex items-center gap-3 bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 px-5 py-4 rounded-2xl border border-blue-100/50 shadow-sm">
+                        <div className="relative shrink-0 h-5 w-5">
+                          <div 
+                            className="absolute inset-0 rounded-full animate-spin"
+                            style={{
+                              background: 'conic-gradient(from 0deg, transparent, #3b82f6, #6366f1, #8b5cf6, #3b82f6, transparent)',
+                              mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 3px))',
+                              WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 3px))'
+                            }}
+                          ></div>
+                        </div>
+                        <p className="text-sm font-medium text-gray-700 italic">{getLoadingMessage(conversationId)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
+            {/* Invisible element at the bottom to scroll to */}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Input Area */}
