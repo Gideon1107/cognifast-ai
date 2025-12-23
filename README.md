@@ -73,7 +73,7 @@ Cognifast transforms traditional learning by allowing users to upload documents 
    
    Create a `.env` file in the `backend` directory:
    ```env
-   PORT=3001
+   PORT=3000
    NODE_ENV=development
    
    # Database
@@ -201,33 +201,99 @@ npm run build
 
 ```
 Cognifast-ai/
-├── backend/                 # Backend API server
+├── backend/                        # Backend API server
 │   ├── src/
-│   │   ├── agents/         # LangGraph agents (Router, Retrieval, Generator, Quality)
-│   │   ├── controllers/    # Request handlers
-│   │   ├── db/             # Database schema and migrations
-│   │   ├── graphs/         # LangGraph StateGraphs
-│   │   ├── middleware/     # Express middleware
-│   │   ├── routes/         # API routes
-│   │   ├── services/       # Business logic
-│   │   ├── sockets/        # WebSocket server
-│   │   ├── types/          # Backend-only types (internal)
-│   │   └── utils/          # Utilities
-│   └── tsconfig.json       # TypeScript config with @shared path alias
-│
-├── frontend/               # React frontend
-│   └── tsconfig.json       # TypeScript config with @shared path alias
-│
-├── shared/                 # Shared types and constants
-│   ├── types/
-│   │   ├── entities.ts     # Domain models (Message, Conversation, Document)
-│   │   ├── api.ts          # API request/response types
-│   │   └── index.ts        # Central export
-│   ├── constants/          # Shared constants (to be added)
+│   │   ├── agents/                 # LangGraph agents
+│   │   │   └── chat/
+│   │   │       ├── router.agent.ts      # Routes queries (retrieve/direct/clarify)
+│   │   │       ├── retrieval.agent.ts   # Retrieves relevant document chunks
+│   │   │       ├── generator.agent.ts   # Generates AI responses (streaming)
+│   │   │       └── quality.agent.ts      # Evaluates response quality
+│   │   ├── controllers/            # Request handlers
+│   │   │   ├── chat.controller.ts
+│   │   │   └── document.controller.ts
+│   │   ├── db/                     # Database configuration
+│   │   │   ├── dbConnection.ts
+│   │   │   ├── schema.sql          # Database schema
+│   │   │   ├── vector_search_function.sql  # Vector search RPC function
+│   │   │   └── migrations/         # Database migrations
+│   │   ├── graphs/                 # LangGraph state graphs
+│   │   │   └── chat.graph.ts       # Chat workflow orchestration
+│   │   ├── middleware/             # Express middleware
+│   │   │   └── upload.middleware.ts
+│   │   ├── routes/                 # API route definitions
+│   │   │   ├── chat.routes.ts
+│   │   │   └── document.routes.ts
+│   │   ├── services/               # Business logic
+│   │   │   ├── chat.service.ts           # Conversation management
+│   │   │   ├── chat-stream.service.ts    # WebSocket streaming orchestration
+│   │   │   ├── document.service.ts      # Document processing
+│   │   │   ├── embedding.service.ts     # Embedding generation
+│   │   │   ├── retrieval.service.ts     # Vector search
+│   │   │   └── storage.service.ts       # File storage
+│   │   ├── sockets/                # WebSocket handlers
+│   │   │   └── chat.socket.ts      # Socket.io event handlers
+│   │   ├── types/                  # Backend-only types (internal)
+│   │   │   ├── chat.types.ts
+│   │   │   ├── document.types.ts
+│   │   │   ├── quiz.types.ts
+│   │   │   └── summary.types.ts
+│   │   ├── utils/                  # Utility functions
+│   │   │   └── logger.ts           # Logging utility
+│   │   └── index.ts                # Application entry point
+│   ├── dist/                       # Compiled JavaScript (generated)
+│   ├── uploads/                    # Temporary file storage
 │   ├── package.json
-│   └── README.md           # Documentation for shared types
+│   ├── tsconfig.json               # TypeScript config with @shared path alias
+│   └── README.md                   # Backend documentation
 │
-└── README.md               # This file
+├── frontend/                       # React frontend
+│   ├── src/
+│   │   ├── components/             # React components
+│   │   │   ├── chat/
+│   │   │   │   └── DocumentUploadModal.tsx
+│   │   │   ├── landing/
+│   │   │   │   ├── FeatureCard.tsx
+│   │   │   │   └── HeroSection.tsx
+│   │   │   └── Navbar.tsx
+│   │   ├── hooks/                  # Custom React hooks
+│   │   │   └── useWebSocket.ts     # WebSocket connection management
+│   │   ├── lib/                    # Library utilities
+│   │   │   ├── api.ts              # API client (Axios)
+│   │   │   ├── queryClient.ts      # React Query client
+│   │   │   └── websocket.ts        # Socket.io client setup
+│   │   ├── pages/                  # Page components
+│   │   │   ├── Chat.tsx            # Chat interface
+│   │   │   ├── Dashboard.tsx       # Dashboard/home page
+│   │   │   ├── Documents.tsx        # Documents page
+│   │   │   └── Landing.tsx         # Landing page
+│   │   ├── store/                  # State management (Zustand)
+│   │   │   ├── index.ts            # Store exports
+│   │   │   ├── types.ts            # Store type definitions
+│   │   │   └── useChatStore.ts     # Chat store implementation
+│   │   ├── utils/                  # Utility functions
+│   │   │   └── logger.ts           # Frontend logging
+│   │   ├── App.tsx                 # Root component
+│   │   ├── main.tsx                # Application entry point
+│   │   └── index.css               # Global styles
+│   ├── public/                     # Static assets
+│   ├── package.json
+│   ├── tsconfig.json               # TypeScript config with @shared path alias
+│   ├── vite.config.ts              # Vite configuration
+│   └── README.md                   # Frontend documentation
+│
+├── shared/                         # Shared types and constants
+│   ├── types/
+│   │   ├── entities.ts             # Domain models (Message, Conversation, Document)
+│   │   ├── api.ts                  # API request/response types
+│   │   └── index.ts                # Central export
+│   ├── constants/                  # Shared constants
+│   ├── package.json
+│   └── README.md                   # Documentation for shared types
+│
+├── ARCHITECTURE_FLOW.md            # Architecture flow diagram
+├── .gitignore
+└── README.md                       # This file
 ```
 
 ### Type Organization
