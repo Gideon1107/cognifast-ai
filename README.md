@@ -105,8 +105,8 @@ Cognifast transforms traditional learning by allowing users to upload documents 
    ```
 
 5. **Access the application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:3001
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:3000
 
 ## 📖 Usage
 
@@ -210,6 +210,7 @@ Cognifast-ai/
 │   │   ├── middleware/     # Express middleware
 │   │   ├── routes/         # API routes
 │   │   ├── services/       # Business logic
+│   │   ├── sockets/        # WebSocket server
 │   │   ├── types/          # Backend-only types (internal)
 │   │   └── utils/          # Utilities
 │   └── tsconfig.json       # TypeScript config with @shared path alias
