@@ -7,6 +7,7 @@ const router = Router();
  * Chat Routes
  * 
  * POST   /api/chat/conversations                         - Start a new conversation
+ * GET    /api/chat/conversations                         - Get all conversations
  * POST   /api/chat/conversations/:conversationId/messages - Send a message and get AI response
  * GET    /api/chat/conversations/:conversationId         - Get a conversation with all messages
  * GET    /api/chat/documents/:documentId/conversations   - Get all conversations for a document
@@ -15,6 +16,9 @@ const router = Router();
 
 // Start a new conversation
 router.post('/conversations', ChatController.startConversation);
+
+// Get all conversations
+router.get('/conversations', ChatController.getAllConversations);
 
 // Send a message to a conversation
 router.post('/conversations/:conversationId/messages', ChatController.sendMessage);

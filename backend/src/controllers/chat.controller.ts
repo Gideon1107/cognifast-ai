@@ -6,6 +6,7 @@ import {
     SendMessageRequest,
     SendMessageResponse,
     GetConversationResponse,
+    GetAllConversationsResponse,
     DeleteConversationResponse
 } from '../types/chat.types';
 import { createLogger } from '../utils/logger';
@@ -204,6 +205,27 @@ export class ChatController {
                 success: false,
                 error: error.message
             } as DeleteConversationResponse);
+        }
+    }
+
+    /**
+     * GET /api/chat/conversations
+     * Get all conversations
+     */
+    static async getAllConversations(req: Request, res: Response): Promise<void> {
+        try {
+            const conversations = await ChatService.getAllConversations();
+
+            res.status(200).json({
+                success: true,
+                conversations
+            } as GetAllConversationsResponse);
+        } catch (error: any) {
+            logger.error(`Error getting all conversations: ${error.message}`);
+            res.status(500).json({
+                success: false,
+                error: error.message
+            } as GetAllConversationsResponse);
         }
     }
 }

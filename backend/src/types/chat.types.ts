@@ -11,6 +11,7 @@ import type {
     SendMessageRequest,
     SendMessageResponse,
     GetConversationResponse,
+    GetAllConversationsResponse,
     DeleteConversationResponse
 } from '@shared/types';
 
@@ -24,6 +25,7 @@ export type {
     SendMessageRequest,
     SendMessageResponse,
     GetConversationResponse,
+    GetAllConversationsResponse,
     DeleteConversationResponse
 };
 

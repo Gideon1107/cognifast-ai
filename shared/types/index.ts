@@ -20,6 +20,7 @@ export type {
     SendMessageRequest,
     SendMessageResponse,
     GetConversationResponse,
+    GetAllConversationsResponse,
     DeleteConversationResponse,
     // Document API
     DocumentUploadResponse,

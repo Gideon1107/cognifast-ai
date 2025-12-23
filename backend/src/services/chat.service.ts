@@ -15,6 +15,63 @@ const logger = createLogger('CHAT-SERVICE');
 
 export class ChatService {
     /**
+     * Get all conversations with document IDs and names
+     */
+    static async getAllConversations(): Promise<Conversation[]> {
+        try {
+            const { data: conversations, error } = await supabase
+                .from('conversations')
+                .select('*')
+                .order('updated_at', { ascending: false });
+
+            if (error) {
+                logger.error(`Error fetching conversations: ${error.message}`);
+                throw new Error(`Error fetching conversations: ${error.message}`);
+            }
+
+            if (!conversations || conversations.length === 0) {
+                return [];
+            }
+
+            // Enrich each conversation with document IDs and names
+            const conversationsWithDocs = await Promise.all(
+                conversations.map(async (conv) => {
+                    // Get document IDs from junction table
+                    const { data: convDocs } = await supabase
+                        .from('conversation_documents')
+                        .select('document_id')
+                        .eq('conversation_id', conv.id);
+
+                    const docIds = (convDocs || []).map(d => d.document_id);
+
+                    // Fetch document names
+                    const { data: docDetails } = await supabase
+                        .from('documents')
+                        .select('id, original_name')
+                        .in('id', docIds);
+
+                    const docNames = (docDetails || []).map(d => d.original_name);
+
+                    return {
+                        id: conv.id,
+                        documentIds: docIds,
+                        documentNames: docNames,
+                        title: conv.title,
+                        createdAt: conv.created_at,
+                        updatedAt: conv.updated_at
+                    };
+                })
+            );
+
+            return conversationsWithDocs;
+
+        } catch (error: any) {
+            logger.error(`Error getting all conversations: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
      * Create a new conversation
      */
     static async createConversation(request: StartConversationRequest): Promise<{ conversation: Conversation; initialMessages: Message[] }> {

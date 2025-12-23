@@ -61,6 +61,15 @@ export interface GetConversationResponse {
 }
 
 /**
+ * Response from getting all conversations
+ */
+export interface GetAllConversationsResponse {
+    success: boolean;
+    conversations: Conversation[];
+    error?: string;
+}
+
+/**
  * Response from deleting a conversation
  */
 export interface DeleteConversationResponse {
