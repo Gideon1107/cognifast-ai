@@ -3,7 +3,8 @@
  * Modal for uploading documents when creating a new classroom
  */
 
-import { useState, useRef, DragEvent } from 'react';
+import { useState, useRef } from 'react';
+import type { DragEvent } from 'react';
 import { X, Upload, FileText, File, FileCheck, AlertCircle } from 'lucide-react';
 import { uploadDocument } from '../../lib/api';
 import type { DocumentMetadata } from '@shared/types';
@@ -75,9 +76,10 @@ export function DocumentUploadModal({ isOpen, onClose, onUploadSuccess }: Docume
       } else {
         throw new Error(response.error || 'Upload failed');
       }
-    } catch (error: any) {
+    } catch (error) {
       setUploadStatus('error');
-      setErrorMessage(error.message || 'Failed to upload document. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload document. Please try again.';
+      setErrorMessage(errorMessage);
       setUploadProgress(0);
     }
   };

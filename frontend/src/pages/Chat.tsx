@@ -3,7 +3,7 @@
  * 3-column layout: Sources (left) | Chat (center) | Studio (right)
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Navbar } from '../components/Navbar';
@@ -14,19 +14,35 @@ import {
   sendMessage as sendMessageAPI, 
   startConversation 
 } from '../lib/api';
-import type { DocumentMetadata, Message, Conversation } from '@shared/types';
+import { useChatStore } from '../store';
+import type { DocumentMetadata, Message } from '@shared/types';
 
 export function Chat() {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [message, setMessage] = useState('');
-  const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [uploadInProgress, setUploadInProgress] = useState(false);
+
+  // Zustand store
+  const {
+    getMessages,
+    getConversation: getStoreConversation,
+    setConversation,
+    addMessages,
+    addMessage,
+    setCurrentConversation,
+    removeMessage,
+  } = useChatStore();
 
   // Determine if modal should be shown
   const isNew = searchParams.get('new') === 'true';
   const showUploadModal = !conversationId && (isNew || true); // Show modal if no conversation ID
+
+  // Set current conversation in store
+  useEffect(() => {
+    setCurrentConversation(conversationId || null);
+  }, [conversationId, setCurrentConversation]);
 
   // Fetch conversation if conversationId exists
   const { data: conversationData, isLoading: isLoadingConversation } = useQuery({
@@ -35,10 +51,21 @@ export function Chat() {
     enabled: !!conversationId,
   });
 
-  const conversation: Conversation | null = conversationData?.conversation || null;
-  // Use conversation messages if available, otherwise use local messages (for optimistic updates)
-  const baseMessages = conversationData?.messages || [];
-  const messages: Message[] = baseMessages.length > 0 ? baseMessages : localMessages;
+  // Sync conversation data to store when it loads
+  useEffect(() => {
+    if (conversationData?.success && conversationData.conversation && conversationId) {
+      setConversation(conversationData.conversation);
+      
+      // Sync messages to store
+      if (conversationData.messages && conversationData.messages.length > 0) {
+        addMessages(conversationId, conversationData.messages);
+      }
+    }
+  }, [conversationData, conversationId, setConversation, addMessages]);
+
+  // Get conversation and messages from store
+  const conversation = conversationId ? getStoreConversation(conversationId) : null;
+  const messages = conversationId ? getMessages(conversationId) : [];
 
   const studioOptions = [
     { id: 'audio', name: 'Audio Overview', icon: Sparkles },
@@ -61,8 +88,13 @@ export function Chat() {
       });
 
       if (response.success && response.conversation) {
-        // Clear any local messages - conversation starts empty
-        setLocalMessages([]);
+        // Add conversation to store
+        setConversation(response.conversation);
+        
+        // Add any initial messages to store (should be empty, but just in case)
+        if (response.messages && response.messages.length > 0) {
+          addMessages(response.conversation.id, response.messages);
+        }
         
         // Navigate to conversation URL (this will cause re-render and modal will close automatically)
         navigate(`/chat/${response.conversation.id}`, { replace: true });
@@ -85,24 +117,24 @@ export function Chat() {
       createdAt: new Date().toISOString(),
     };
 
-    // Optimistically add user message
-    setLocalMessages((prev) => [...prev, userMessage]);
+    const messageContent = message.trim();
     setMessage('');
 
+    // Optimistically add user message to store
+    addMessage(conversationId, userMessage);
+
     try {
-      const response = await sendMessageAPI(conversationId, message.trim());
+      const response = await sendMessageAPI(conversationId, messageContent);
       
       if (response.success && response.message) {
-        // Replace optimistic message with real response
-        setLocalMessages((prev) => {
-          const withoutTemp = prev.filter((m) => m.id !== userMessage.id);
-          return [...withoutTemp, userMessage, response.message];
-        });
+        // Update temp user message with a permanent ID (or keep it as is)
+        // The user message stays in store, just add the assistant response
+        addMessage(conversationId, response.message);
       }
     } catch (error) {
       console.error('Failed to send message:', error);
       // Remove optimistic message on error
-      setLocalMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
+      removeMessage(conversationId, userMessage.id!);
     }
   };
 
