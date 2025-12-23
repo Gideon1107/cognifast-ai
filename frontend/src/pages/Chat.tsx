@@ -16,7 +16,7 @@ import {
 import { useChatStore } from '../store';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { renderWithLatex } from '../utils/latex';
-import type { DocumentMetadata, Message } from '@shared/types';
+import type { Message } from '@shared/types';
 
 export function Chat() {
   const { conversationId } = useParams<{ conversationId?: string }>();
@@ -113,15 +113,15 @@ export function Chat() {
     { id: 'quiz', name: 'Quiz', icon: ClipboardList },
   ];
 
-  const handleUploadSuccess = async (document: DocumentMetadata) => {
-    if (!document.id) return;
+  const handleStartClassroom = async (documentIds: string[]) => {
+    if (documentIds.length === 0) return;
 
     setUploadInProgress(true);
 
     try {
-      // Start conversation with uploaded document (no initial message)
+      // Start conversation with uploaded documents (no initial message)
       const response = await startConversation({
-        documentIds: [document.id],
+        documentIds,
       });
 
       if (response.success && response.conversation) {
@@ -201,12 +201,12 @@ export function Chat() {
         isOpen={showUploadModal}
         onClose={() => {
           // Only navigate back if user manually closes modal (not after successful upload)
-          // After successful upload, handleUploadSuccess will navigate to conversation
+          // After successful upload, handleStartClassroom will navigate to conversation
           if (!conversationId && !uploadInProgress) {
             navigate('/dashboard');
           }
         }}
-        onUploadSuccess={handleUploadSuccess}
+        onStartClassroom={handleStartClassroom}
       />
 
       {/* 3-Column Layout */}
@@ -311,6 +311,19 @@ export function Chat() {
                                 return text.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
                               };
 
+                              // Convert markdown headings to HTML headings
+                              // Handles ### Heading 3, ## Heading 2, # Heading 1
+                              const formatHeadings = (text: string) => {
+                                // Process from largest to smallest to avoid conflicts
+                                // ### Heading 3
+                                text = text.replace(/^###\s+(.+)$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>');
+                                // ## Heading 2
+                                text = text.replace(/^##\s+(.+)$/gm, '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>');
+                                // # Heading 1
+                                text = text.replace(/^#\s+(.+)$/gm, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>');
+                                return text;
+                              };
+
                               // Check if content has LaTeX
                               const hasLatex = /\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)|\\\(([^)]+?)\\\)/.test(msg.content);
                               
@@ -321,8 +334,16 @@ export function Chat() {
                                 // Render parts with formatting
                                 return latexParts.map((part, partIdx) => {
                                   if (typeof part === 'string') {
+                                    // Process headings first, then split by newlines
+                                    const withHeadings = formatHeadings(part);
                                     // Split by newlines for line-by-line processing
-                                    return part.split('\n').map((line, lineIdx) => {
+                                    return withHeadings.split('\n').map((line, lineIdx) => {
+                                      // Check for headings (already formatted as HTML)
+                                      if (line.includes('<h1') || line.includes('<h2') || line.includes('<h3')) {
+                                        return (
+                                          <div key={`${partIdx}-${lineIdx}`} dangerouslySetInnerHTML={{ __html: formatBold(line) }} />
+                                        );
+                                      }
                                       const listMatch = line.match(/^(\d+\.\s+)(.+)$/);
                                       if (listMatch) {
                                         return (
@@ -344,8 +365,16 @@ export function Chat() {
                                   return part;
                                 });
                               } else {
+                                // Process headings first, then split by newlines
+                                const withHeadings = formatHeadings(msg.content);
                                 // Original markdown rendering if no LaTeX
-                                return msg.content.split('\n').map((line, idx) => {
+                                return withHeadings.split('\n').map((line, idx) => {
+                                  // Check for headings (already formatted as HTML)
+                                  if (line.includes('<h1') || line.includes('<h2') || line.includes('<h3')) {
+                                    return (
+                                      <div key={idx} dangerouslySetInnerHTML={{ __html: formatBold(line) }} />
+                                    );
+                                  }
                                   const listMatch = line.match(/^(\d+\.\s+)(.+)$/);
                                   if (listMatch) {
                                     const listContent = formatBold(listMatch[2]);

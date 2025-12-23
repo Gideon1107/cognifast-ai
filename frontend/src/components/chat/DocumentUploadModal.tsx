@@ -5,23 +5,25 @@
 
 import { useState, useRef } from 'react';
 import type { DragEvent } from 'react';
-import { X, Upload, FileText, File, FileCheck, AlertCircle } from 'lucide-react';
+import { X, Upload, FileText, File, FileCheck, AlertCircle, Trash2 } from 'lucide-react';
 import { uploadDocument } from '../../lib/api';
 import type { DocumentMetadata } from '@shared/types';
 
 interface DocumentUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUploadSuccess: (document: DocumentMetadata) => void;
+  onStartClassroom: (documentIds: string[]) => void;
 }
 
-type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
+type UploadStatus = 'idle' | 'uploading' | 'error';
 
-export function DocumentUploadModal({ isOpen, onClose, onUploadSuccess }: DocumentUploadModalProps) {
+export function DocumentUploadModal({ isOpen, onClose, onStartClassroom }: DocumentUploadModalProps) {
+  const [uploadedDocuments, setUploadedDocuments] = useState<DocumentMetadata[]>([]);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const acceptedFileTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
@@ -67,12 +69,11 @@ export function DocumentUploadModal({ isOpen, onClose, onUploadSuccess }: Docume
       setUploadProgress(100);
 
       if (response.success && response.document) {
-        setUploadStatus('success');
-        setTimeout(() => {
-          onUploadSuccess(response.document!);
-          // Don't call handleClose() here - let the parent component handle navigation
-          // The modal will close when showUploadModal becomes false
-        }, 1500);
+        // Add document to the list and keep modal open
+        setUploadedDocuments((prev) => [...prev, response.document!]);
+        setUploadStatus('idle');
+        setUploadProgress(0);
+        setErrorMessage(null);
       } else {
         throw new Error(response.error || 'Upload failed');
       }
@@ -112,20 +113,49 @@ export function DocumentUploadModal({ isOpen, onClose, onUploadSuccess }: Docume
   };
 
   const handleClose = () => {
-    if (uploadStatus === 'uploading') return; // Prevent closing during upload
+    if (uploadStatus === 'uploading' || isStarting) return; // Prevent closing during upload or start
     
     setUploadStatus('idle');
     setUploadProgress(0);
     setErrorMessage(null);
     setIsDragging(false);
+    setUploadedDocuments([]); // Reset uploaded documents when closing
     onClose();
   };
 
-  const getFileIcon = () => {
-    if (uploadStatus === 'success') {
-      return <FileCheck className="w-16 h-16 text-green-500" />;
+  const handleRemoveDocument = (documentId: string) => {
+    setUploadedDocuments((prev) => prev.filter((doc) => doc.id !== documentId));
+  };
+
+  const handleStartClassroom = async () => {
+    if (uploadedDocuments.length === 0) {
+      setErrorMessage('Please upload at least one document to start a classroom.');
+      return;
     }
-    return <FileText className="w-16 h-16 text-blue-500" />;
+
+    const documentIds = uploadedDocuments
+      .map((doc) => doc.id)
+      .filter((id): id is string => !!id);
+
+    if (documentIds.length === 0) {
+      setErrorMessage('Invalid document IDs. Please try uploading again.');
+      return;
+    }
+
+    setIsStarting(true);
+    try {
+      onStartClassroom(documentIds);
+    } catch (error) {
+      setIsStarting(false);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to start classroom. Please try again.';
+      setErrorMessage(errorMessage);
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   if (!isOpen) return null;
@@ -154,94 +184,144 @@ export function DocumentUploadModal({ isOpen, onClose, onUploadSuccess }: Docume
 
         {/* Content */}
         <div className="p-6">
-          {uploadStatus === 'success' ? (
-            <div className="text-center py-8">
-              {getFileIcon()}
-              <h3 className="text-xl font-semibold text-gray-900 mt-4">Upload Successful!</h3>
-              <p className="text-gray-600 mt-2">Starting your classroom...</p>
-            </div>
-          ) : (
-            <>
-              {/* Drag & Drop Zone */}
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${
-                  isDragging
-                    ? 'border-blue-500 bg-blue-50'
-                    : uploadStatus === 'uploading'
-                    ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                    : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
-                }`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.docx,.txt"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  disabled={uploadStatus === 'uploading'}
-                />
-
-                {uploadStatus === 'uploading' ? (
-                  <div className="space-y-4">
-                    <div className="w-16 h-16 mx-auto">
-                      <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent"></div>
-                    </div>
-                    <div>
-                      <p className="text-lg font-medium text-gray-900">Uploading...</p>
-                      <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${uploadProgress}%` }}
-                        ></div>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-2">{uploadProgress}%</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <Upload className="w-16 h-16 text-gray-400 mx-auto" />
-                    <div>
-                      <p className="text-lg font-medium text-gray-900">
-                        Drag and drop your document here
-                      </p>
-                      <p className="text-sm text-gray-600 mt-2">or click to browse</p>
-                    </div>
-                    <div className="flex items-center justify-center gap-4 mt-6">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <File className="w-4 h-4" />
-                        <span>PDF, DOCX, TXT</span>
-                      </div>
-                      <span className="text-gray-400">•</span>
-                      <span className="text-sm text-gray-600">Max 10MB</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Error Message */}
-              {uploadStatus === 'error' && errorMessage && (
-                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-red-900">Upload Failed</p>
-                    <p className="text-sm text-red-700 mt-1">{errorMessage}</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setUploadStatus('idle');
-                      setErrorMessage(null);
-                    }}
-                    className="text-sm font-medium text-red-600 hover:text-red-700"
+          {/* Uploaded Documents List */}
+          {uploadedDocuments.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">
+                Uploaded Documents ({uploadedDocuments.length})
+              </h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {uploadedDocuments.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
                   >
-                    Try Again
-                  </button>
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <FileText className="w-5 h-5 text-blue-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {doc.originalName || doc.filename}
+                        </p>
+                        <p className="text-xs text-gray-500">{formatFileSize(doc.fileSize)}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveDocument(doc.id!)}
+                      disabled={uploadStatus === 'uploading' || isStarting}
+                      className="p-1.5 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Remove document"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Drag & Drop Zone */}
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${
+              isDragging
+                ? 'border-blue-500 bg-blue-50'
+                : uploadStatus === 'uploading' || isStarting
+                ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.docx,.txt"
+              onChange={handleFileSelect}
+              className="hidden"
+              disabled={uploadStatus === 'uploading' || isStarting}
+            />
+
+            {uploadStatus === 'uploading' ? (
+              <div className="space-y-4">
+                <div className="w-16 h-16 mx-auto">
+                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent"></div>
                 </div>
-              )}
-            </>
+                <div>
+                  <p className="text-lg font-medium text-gray-900">Uploading...</p>
+                  <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-2">{uploadProgress}%</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <Upload className="w-16 h-16 text-gray-400 mx-auto" />
+                <div>
+                  <p className="text-lg font-medium text-gray-900">
+                    {uploadedDocuments.length > 0
+                      ? 'Add another document'
+                      : 'Drag and drop your document here'}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-2">or click to browse</p>
+                </div>
+                <div className="flex items-center justify-center gap-4 mt-6">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <File className="w-4 h-4" />
+                    <span>PDF, DOCX, TXT</span>
+                  </div>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-sm text-gray-600">Max 10MB</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Error Message */}
+          {uploadStatus === 'error' && errorMessage && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-red-900">Upload Failed</p>
+                <p className="text-sm text-red-700 mt-1">{errorMessage}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setUploadStatus('idle');
+                  setErrorMessage(null);
+                }}
+                className="text-sm font-medium text-red-600 hover:text-red-700"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+
+          {/* Start Classroom Button */}
+          {uploadedDocuments.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <button
+                onClick={handleStartClassroom}
+                disabled={uploadStatus === 'uploading' || isStarting}
+                className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isStarting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    <span>Starting Classroom...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileCheck className="w-5 h-5" />
+                    <span>Start Classroom</span>
+                  </>
+                )}
+              </button>
+            </div>
           )}
         </div>
       </div>

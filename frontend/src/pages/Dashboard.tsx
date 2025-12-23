@@ -3,22 +3,39 @@
  * NotebookLM-style home with featured and recent classrooms
  */
 
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, MoreVertical } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { getAllConversations } from '../lib/api';
+import { useChatStore } from '../store';
 
 export function Dashboard() {
   const navigate = useNavigate();
+  const { setConversations, conversations: storeConversations } = useChatStore();
 
   // Fetch conversations (classrooms)
-  const { data: conversationsData } = useQuery({
+  const { data: conversationsData, isLoading } = useQuery({
     queryKey: ['conversations'],
     queryFn: getAllConversations,
   });
 
-  const conversations = conversationsData?.conversations || [];
+  // Store conversations in Zustand when they're fetched
+  useEffect(() => {
+    if (conversationsData?.success && conversationsData.conversations) {
+      setConversations(conversationsData.conversations);
+    }
+  }, [conversationsData, setConversations]);
+
+  // Prioritize store data to prevent flicker, then use fetched data as fallback
+  const storeConversationsArray = Array.from(storeConversations.values());
+  const conversations = storeConversationsArray.length > 0
+    ? storeConversationsArray
+    : conversationsData?.conversations || [];
+  
+  // Show loading only if we don't have store data AND we're still fetching
+  const showLoading = isLoading && storeConversationsArray.length === 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -59,41 +76,61 @@ export function Dashboard() {
               <p className="text-lg font-medium text-gray-900">Create new classroom</p>
             </div>
 
-            {/* Recent Conversations */}
-            {conversations.slice(0, 5).map((conv) => (
-              <div
-                key={conv.id}
-                className="group bg-white rounded-2xl p-6 cursor-pointer hover:shadow-md transition-all border border-gray-200 hover:border-gray-300 min-h-[280px] flex flex-col"
-                onClick={() => navigate(`/chat/${conv.id}`)}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-2xl">
-                    📚
+            {/* Loading Skeletons */}
+            {showLoading ? (
+              Array.from({ length: 4 }).map((_, idx) => (
+                <div
+                  key={`skeleton-${idx}`}
+                  className="bg-white rounded-2xl p-6 border border-gray-200 min-h-[280px] flex flex-col animate-pulse"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-12 h-12 bg-gray-200 rounded-xl"></div>
+                    <div className="w-8 h-8 bg-gray-200 rounded-lg"></div>
                   </div>
-                  <button className="opacity-0 group-hover:opacity-100 p-2 hover:bg-gray-100 rounded-lg transition-all">
-                    <MoreVertical className="w-5 h-5 text-gray-600" />
-                  </button>
+                  <div className="h-6 bg-gray-200 rounded mb-2 flex-1"></div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2 flex-1">
-                  {conv.title || 'Untitled Classroom'}
-                </h3>
-                <div className="space-y-2">
-                  <p className="text-gray-600 text-sm">
-                    {conv.documentNames && conv.documentNames.length > 0 
-                      ? `${conv.documentNames.length} source${conv.documentNames.length > 1 ? 's' : ''}`
-                      : 'No sources'
-                    }
-                  </p>
-                  <p className="text-gray-500 text-xs">
-                    {new Date(conv.updatedAt).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric', 
-                      year: 'numeric' 
-                    })}
-                  </p>
+              ))
+            ) : (
+              /* Recent Conversations */
+              conversations.slice(0, 5).map((conv) => (
+                <div
+                  key={conv.id}
+                  className="group bg-white rounded-2xl p-6 cursor-pointer hover:shadow-md transition-all border border-gray-200 hover:border-gray-300 min-h-[280px] flex flex-col"
+                  onClick={() => navigate(`/chat/${conv.id}`)}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-2xl">
+                      📚
+                    </div>
+                    <button className="opacity-0 group-hover:opacity-100 p-2 hover:bg-gray-100 rounded-lg transition-all">
+                      <MoreVertical className="w-5 h-5 text-gray-600" />
+                    </button>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2 flex-1">
+                    {conv.title || 'Untitled Classroom'}
+                  </h3>
+                  <div className="space-y-2">
+                    <p className="text-gray-600 text-sm">
+                      {conv.documentNames && conv.documentNames.length > 0 
+                        ? `${conv.documentNames.length} source${conv.documentNames.length > 1 ? 's' : ''}`
+                        : 'No sources'
+                      }
+                    </p>
+                    <p className="text-gray-500 text-xs">
+                      {new Date(conv.updatedAt).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric' 
+                      })}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </main>
