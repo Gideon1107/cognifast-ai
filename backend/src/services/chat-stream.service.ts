@@ -72,9 +72,29 @@ export async function streamChatGraphWithWebSocket(
         let lastStreamedContent = '';
         let finalAssistantMessage: Message | null = null;
         let lastNodeName = '';
+        let generatorNodeStarted = false;
+
+        // Create token callback for generator agent
+        const onToken = (token: string) => {
+            // Emit token immediately via WebSocket
+            socket.emit('message_token', {
+                conversationId,
+                messageId: streamingMessageId,
+                token: token
+            });
+        };
+
+        // Add token callback to initial state metadata for generator agent
+        const streamingInitialState: ConversationState = {
+            ...initialState,
+            metadata: {
+                ...initialState.metadata,
+                onToken: onToken
+            }
+        };
 
         // Stream graph execution
-        for await (const stateUpdate of streamChatGraph(initialState)) {
+        for await (const stateUpdate of streamChatGraph(streamingInitialState)) {
             // Get current node from state (added by graph stream)
             const currentNode = (stateUpdate as any)._currentNode || '';
             
@@ -92,6 +112,7 @@ export async function streamChatGraphWithWebSocket(
                         break;
                     case 'generator':
                         loadingMessage = 'Generating response...';
+                        generatorNodeStarted = true;
                         break;
                     case 'quality':
                         // Quality check happens quickly, skip loading message
@@ -115,8 +136,8 @@ export async function streamChatGraphWithWebSocket(
                 if (lastMessage && lastMessage.role === 'assistant') {
                     const currentContent = lastMessage.content || '';
                     
-                    // Clear loading when we start receiving content
-                    if (currentContent.length > 0 && lastStreamedContent.length === 0) {
+                    // Clear loading when we start receiving content (first token arrives)
+                    if (currentContent.length > 0 && lastStreamedContent.length === 0 && generatorNodeStarted) {
                         socket.emit('loading_stage', {
                             conversationId,
                             stage: 'streaming',
@@ -124,17 +145,9 @@ export async function streamChatGraphWithWebSocket(
                         });
                     }
                     
-                    // Emit new tokens if content has grown
-                    if (currentContent.length > lastStreamedContent.length) {
-                        const newTokens = currentContent.slice(lastStreamedContent.length);
-                        lastStreamedContent = currentContent;
-                        
-                        socket.emit('message_token', {
-                            conversationId,
-                            messageId: streamingMessageId,
-                            token: newTokens
-                        });
-                    }
+                    // Note: Tokens are now emitted directly from generator agent via onToken callback
+                    // We still track content for final message
+                    lastStreamedContent = currentContent;
                     
                     // Keep track of final message
                     finalAssistantMessage = lastMessage;

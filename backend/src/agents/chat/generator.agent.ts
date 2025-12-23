@@ -22,6 +22,7 @@ export class GeneratorAgent {
 
     /**
      * Generate response based on context and conversation history
+     * Supports token-by-token streaming if onToken callback is provided in metadata
      */
     async execute(state: ConversationState): Promise<Partial<ConversationState>> {
         const startTime = Date.now();
@@ -42,46 +43,16 @@ export class GeneratorAgent {
                 prompt = this.buildRAGPrompt(state);
             }
 
-            const responseStartTime = Date.now();
-            const response = await this.llm.invoke(prompt);
-            const responseEndTime = Date.now();
-            const content = response.content.toString();
-
-            const totalTime = Date.now() - startTime;
-            logger.info(`Generated response (${content.length} chars) in ${totalTime}ms (OpenAI: ${responseEndTime - responseStartTime}ms)`);
-
-            // Create assistant message
-            const assistantMessage: Message = {
-                id: uuidv4(), 
-                conversationId: state.conversationId,
-                role: "assistant",
-                content: content,
-                sources: state.retrievedChunks.map((chunk) => ({
-                    chunkId: chunk.id,
-                    documentId: chunk.documentId,
-                    documentName: chunk.documentName,
-                    chunkText: chunk.chunkText,
-                    chunkIndex: chunk.chunkIndex,
-                    similarity: chunk.similarity,
-                })),
-                createdAt: new Date().toISOString(),
-            };
-
-            // Extract token usage safely
-            const responseMetadata = response.response_metadata as any;
-            const tokensUsed =
-                responseMetadata?.usage?.total_tokens ||
-                responseMetadata?.tokenUsage?.total_tokens ||
-                0;
-
-            return {
-                messages: [...state.messages, assistantMessage],
-                metadata: {
-                    ...state.metadata,
-                    model: "gpt-4o-mini (generator)",
-                    totalTokens: (state.metadata.totalTokens || 0) + tokensUsed,
-                },
-            };
+            // Check if we should stream tokens (onToken callback in metadata)
+            const onToken = (state.metadata as any)?.onToken;
+            
+            if (onToken && typeof onToken === 'function') {
+                // Token-by-token streaming mode
+                return await this.executeStreaming(state, prompt, onToken, startTime);
+            } else {
+                // Non-streaming mode (for REST API or fallback)
+                return await this.executeNonStreaming(state, prompt, startTime);
+            }
         } catch (error: any) {
             logger.error(`Error: ${error.message}`);
 
@@ -100,6 +71,119 @@ export class GeneratorAgent {
                 responseQuality: "poor",
             };
         }
+    }
+
+    /**
+     * Execute with token-by-token streaming
+     */
+    private async executeStreaming(
+        state: ConversationState,
+        prompt: string,
+        onToken: (token: string) => void,
+        startTime: number
+    ): Promise<Partial<ConversationState>> {
+        const responseStartTime = Date.now();
+        let content = '';
+        let tokensUsed = 0;
+        const messageId = uuidv4();
+
+        // Stream tokens from OpenAI
+        const stream = await this.llm.stream(prompt);
+        
+        for await (const chunk of stream) {
+            const token = chunk.content?.toString() || '';
+            if (token) {
+                content += token;
+                // Emit token immediately via callback
+                onToken(token);
+            }
+
+            // Extract token usage from chunk metadata if available
+            const chunkMetadata = chunk.response_metadata as any;
+            if (chunkMetadata?.usage?.total_tokens) {
+                tokensUsed = chunkMetadata.usage.total_tokens;
+            }
+        }
+
+        const responseEndTime = Date.now();
+        const totalTime = Date.now() - startTime;
+        logger.info(`Generated streaming response (${content.length} chars) in ${totalTime}ms (OpenAI: ${responseEndTime - responseStartTime}ms)`);
+
+        // Create assistant message with complete content
+        const assistantMessage: Message = {
+            id: messageId,
+            conversationId: state.conversationId,
+            role: "assistant",
+            content: content,
+            sources: state.retrievedChunks.map((chunk) => ({
+                chunkId: chunk.id,
+                documentId: chunk.documentId,
+                documentName: chunk.documentName,
+                chunkText: chunk.chunkText,
+                chunkIndex: chunk.chunkIndex,
+                similarity: chunk.similarity,
+            })),
+            createdAt: new Date().toISOString(),
+        };
+
+        return {
+            messages: [...state.messages, assistantMessage],
+            metadata: {
+                ...state.metadata,
+                model: "gpt-4o-mini (generator)",
+                totalTokens: (state.metadata.totalTokens || 0) + tokensUsed,
+            },
+        };
+    }
+
+    /**
+     * Execute without streaming (for REST API)
+     */
+    private async executeNonStreaming(
+        state: ConversationState,
+        prompt: string,
+        startTime: number
+    ): Promise<Partial<ConversationState>> {
+        const responseStartTime = Date.now();
+        const response = await this.llm.invoke(prompt);
+        const responseEndTime = Date.now();
+        const content = response.content.toString();
+
+        const totalTime = Date.now() - startTime;
+        logger.info(`Generated response (${content.length} chars) in ${totalTime}ms (OpenAI: ${responseEndTime - responseStartTime}ms)`);
+
+        // Create assistant message
+        const assistantMessage: Message = {
+            id: uuidv4(), 
+            conversationId: state.conversationId,
+            role: "assistant",
+            content: content,
+            sources: state.retrievedChunks.map((chunk) => ({
+                chunkId: chunk.id,
+                documentId: chunk.documentId,
+                documentName: chunk.documentName,
+                chunkText: chunk.chunkText,
+                chunkIndex: chunk.chunkIndex,
+                similarity: chunk.similarity,
+            })),
+            createdAt: new Date().toISOString(),
+        };
+
+        // Extract token usage safely
+        const responseMetadata = response.response_metadata as any;
+        const tokensUsed =
+            responseMetadata?.usage?.total_tokens ||
+            responseMetadata?.tokenUsage?.total_tokens ||
+            0;
+
+        return {
+            messages: [...state.messages, assistantMessage],
+            metadata: {
+                ...state.metadata,
+                model: "gpt-4o-mini (generator)",
+                totalTokens: (state.metadata.totalTokens || 0) + tokensUsed,
+            },
+        };
     }
 
     /**

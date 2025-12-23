@@ -62,6 +62,7 @@ export interface ConversationState {
         totalTokens?: number;
         model?: string;
         isFirstMessage?: boolean; // Flag to skip quality check for first message
+        onToken?: (token: string) => void; // Callback for token-by-token streaming
     };
 }
 
