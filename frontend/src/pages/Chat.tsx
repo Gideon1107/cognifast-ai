@@ -15,6 +15,7 @@ import {
 } from '../lib/api';
 import { useChatStore } from '../store';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { renderWithLatex } from '../utils/latex';
 import type { DocumentMetadata, Message } from '@shared/types';
 
 export function Chat() {
@@ -192,7 +193,7 @@ export function Chat() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-gray-50" style={{ overflow: 'hidden', position: 'relative' }}>
       <Navbar />
 
       {/* Document Upload Modal */}
@@ -211,7 +212,7 @@ export function Chat() {
       {/* 3-Column Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Sources */}
-        <div className="flex-[0_0_15%] bg-white border-r border-gray-200 flex flex-col">
+        <div className="flex-[0_0_20%] bg-white border-r border-gray-200 flex flex-col">
           <div className="p-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Sources</h2>
           </div>
@@ -271,7 +272,7 @@ export function Chat() {
         </div>
 
         {/* Center - Chat Interface */}
-        <div className="flex-[0_0_55%] flex flex-col bg-white">
+        <div className="flex-[0_0_50%] flex flex-col bg-white">
           {/* Chat Header */}
           <div className="px-6 py-4 border-b border-gray-200">
             <h1 className="text-xl font-semibold text-gray-900">
@@ -283,7 +284,7 @@ export function Chat() {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6" style={{ minHeight: 0, maxHeight: '100%' }}>
             {messages.length === 0 && (!conversationId || !isLoading(conversationId)) ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center text-gray-500">
@@ -295,46 +296,76 @@ export function Chat() {
             ) : (
               <>
                 {messages.map((msg) => (
-                  <div key={msg.id || `msg-${msg.createdAt}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-3xl ${msg.role === 'user' ? 'w-auto' : 'w-full'}`}>
+                  <div key={msg.id || `msg-${msg.createdAt}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`} style={{ minWidth: 0, maxWidth: '100%' }}>
+                    <div className={`max-w-3xl ${msg.role === 'user' ? 'w-auto' : 'w-full'}`} style={{ maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}>
                       {msg.role === 'user' ? (
                         <div className="bg-gray-900 text-white px-4 py-3 rounded-2xl">
                           <p className="text-sm">{msg.content}</p>
                         </div>
                       ) : (
-                        <div className="space-y-3">
-                          <div className="prose prose-sm max-w-none text-gray-900 leading-relaxed">
-                            {msg.content.split('\n').map((line, idx) => {
-                              // Convert **text** to bold (handle multiple bold sections in one line)
+                        <div className="space-y-3" style={{ maxWidth: '100%', overflow: 'hidden', minWidth: 0 }}>
+                          <div className="prose prose-sm max-w-none text-gray-900 leading-relaxed" style={{ maxWidth: '100%', overflowWrap: 'break-word', overflow: 'hidden', minWidth: 0 }}>
+                            {(() => {
+                              // Convert **text** to bold
                               const formatBold = (text: string) => {
-                                // Match **text** but not ***text*** (which would be bold+italic)
-                                // Use a more robust pattern that handles edge cases
                                 return text.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
                               };
+
+                              // Check if content has LaTeX
+                              const hasLatex = /\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)|\\\(([^)]+?)\\\)/.test(msg.content);
                               
-                              // Check if line starts with number for lists
-                              const listMatch = line.match(/^(\d+\.\s+)(.+)$/);
-                              if (listMatch) {
-                                const listContent = formatBold(listMatch[2]);
-                                return (
-                                  <div key={idx} className="mb-2">
-                                    <span className="font-semibold">{listMatch[1]}</span>
-                                    <span dangerouslySetInnerHTML={{ __html: listContent }} />
-                                  </div>
-                                );
+                              if (hasLatex) {
+                                // Process with LaTeX support
+                                const latexParts = renderWithLatex(msg.content);
+                                
+                                // Render parts with formatting
+                                return latexParts.map((part, partIdx) => {
+                                  if (typeof part === 'string') {
+                                    // Split by newlines for line-by-line processing
+                                    return part.split('\n').map((line, lineIdx) => {
+                                      const listMatch = line.match(/^(\d+\.\s+)(.+)$/);
+                                      if (listMatch) {
+                                        return (
+                                          <div key={`${partIdx}-${lineIdx}`} className="mb-2">
+                                            <span className="font-semibold">{listMatch[1]}</span>
+                                            <span dangerouslySetInnerHTML={{ __html: formatBold(listMatch[2]) }} />
+                                          </div>
+                                        );
+                                      }
+                                      if (line.trim()) {
+                                        return (
+                                          <p key={`${partIdx}-${lineIdx}`} className="mb-2" dangerouslySetInnerHTML={{ __html: formatBold(line) }} />
+                                        );
+                                      }
+                                      return <br key={`${partIdx}-${lineIdx}`} />;
+                                    });
+                                  }
+                                  // LaTeX element (ReactElement)
+                                  return part;
+                                });
+                              } else {
+                                // Original markdown rendering if no LaTeX
+                                return msg.content.split('\n').map((line, idx) => {
+                                  const listMatch = line.match(/^(\d+\.\s+)(.+)$/);
+                                  if (listMatch) {
+                                    const listContent = formatBold(listMatch[2]);
+                                    return (
+                                      <div key={idx} className="mb-2">
+                                        <span className="font-semibold">{listMatch[1]}</span>
+                                        <span dangerouslySetInnerHTML={{ __html: listContent }} />
+                                      </div>
+                                    );
+                                  }
+                                  if (line.trim()) {
+                                    const formattedLine = formatBold(line);
+                                    return (
+                                      <p key={idx} className="mb-2" dangerouslySetInnerHTML={{ __html: formattedLine }} />
+                                    );
+                                  }
+                                  return <br key={idx} />;
+                                });
                               }
-                              
-                              // Regular paragraph
-                              if (line.trim()) {
-                                const formattedLine = formatBold(line);
-                                return (
-                                  <p key={idx} className="mb-2" dangerouslySetInnerHTML={{ __html: formattedLine }} />
-                                );
-                              }
-                              
-                              // Empty line for spacing
-                              return <br key={idx} />;
-                            })}
+                            })()}
                           </div>
                           {msg.sources && Array.isArray(msg.sources) && msg.sources.length > 0 && (
                             <div className="flex items-center gap-2 text-xs text-gray-600">

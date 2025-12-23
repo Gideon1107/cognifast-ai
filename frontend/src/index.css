@@ -1,11 +1,22 @@
 @import "tailwindcss";
+@import "katex/dist/katex.min.css";
 
 /* Custom Typography - NotebookLM Style */
 @layer base {
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  
+  #root {
+    height: 100%;
   }
 }
 
@@ -24,4 +35,44 @@
   strong {
     font-weight: 600;
   }
+}
+
+/* KaTeX Overrides for Vertical Overflow Prevention */
+.katex-display {
+  margin: 0.5em 0 !important; /* Reduce default margins */
+  max-height: none; /* Allow natural height */
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important; /* Prevent scrollbars */
+}
+
+.katex {
+  max-width: 100% !important;
+  overflow: hidden !important; /* Prevent scrollbars */
+  display: inline-block !important;
+  box-sizing: border-box !important;
+  word-wrap: break-word !important;
+}
+
+/* Ensure LaTeX containers don't expand parent */
+.prose .katex-display {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden !important;
+}
+
+/* Prevent any LaTeX element from causing page overflow */
+.katex-display,
+.katex-display > .katex {
+  contain: layout style;
+}
+
+/* Scale down KaTeX if it's too wide */
+.katex-display .katex {
+  max-width: 100% !important;
+  transform-origin: center;
 }
