@@ -1,5 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Sansation:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap');
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
+
 
 /* Custom Typography - NotebookLM Style */
 @layer base {
@@ -75,4 +77,10 @@
 .katex-display .katex {
   max-width: 100% !important;
   transform-origin: center;
+}
+
+.sansation-regular {
+  font-family: "Sansation", sans-serif;
+  font-weight: 400;
+  font-style: normal;
 }

@@ -113,15 +113,16 @@ export function Chat() {
     { id: 'quiz', name: 'Quiz', icon: ClipboardList },
   ];
 
-  const handleStartClassroom = async (documentIds: string[]) => {
+  const handleStartClassroom = async (documentIds: string[], title: string) => {
     if (documentIds.length === 0) return;
 
     setUploadInProgress(true);
 
     try {
-      // Start conversation with uploaded documents (no initial message)
+      // Start conversation with uploaded documents and title
       const response = await startConversation({
         documentIds,
+        title,
       });
 
       if (response.success && response.conversation) {

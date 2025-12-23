@@ -12,7 +12,9 @@ import type {
     SendMessageResponse,
     GetConversationResponse,
     GetAllConversationsResponse,
-    DeleteConversationResponse
+    DeleteConversationResponse,
+    UpdateConversationRequest,
+    UpdateConversationResponse
 } from '@shared/types';
 
 export type {
@@ -26,7 +28,9 @@ export type {
     SendMessageResponse,
     GetConversationResponse,
     GetAllConversationsResponse,
-    DeleteConversationResponse
+    DeleteConversationResponse,
+    UpdateConversationRequest,
+    UpdateConversationResponse
 };
 
 /**

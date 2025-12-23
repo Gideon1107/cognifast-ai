@@ -15,6 +15,7 @@ import type {
   GetConversationResponse,
   GetAllConversationsResponse,
   DeleteConversationResponse,
+  UpdateConversationResponse,
 } from '@shared/types';
 
 // Base URL from environment variable
@@ -148,6 +149,24 @@ export async function getConversation(conversationId: string): Promise<GetConver
 }
 
 /**
+ * Update a conversation title
+ */
+export async function updateConversation(
+  conversationId: string,
+  title: string
+): Promise<UpdateConversationResponse> {
+  try {
+    const response = await apiClient.patch<UpdateConversationResponse>(
+      `/chat/conversations/${conversationId}`,
+      { title }
+    );
+    return response.data;
+  } catch (error) {
+    return handleError(error as AxiosError);
+  }
+}
+
+/**
  * Get all conversations
  */
 export async function getAllConversations(): Promise<GetAllConversationsResponse> {
@@ -182,5 +201,6 @@ export default {
   getConversation,
   getAllConversations,
   deleteConversation,
+  updateConversation,
 };
 

@@ -15,6 +15,7 @@ import { Message, MessageSource, Conversation, DocumentMetadata } from './entiti
 export interface StartConversationRequest {
     documentIds: string[]; // Array of 1 or more document IDs
     initialMessage?: string;
+    title?: string; // Optional title for the conversation
 }
 
 /**
@@ -75,6 +76,22 @@ export interface GetAllConversationsResponse {
 export interface DeleteConversationResponse {
     success: boolean;
     message: string;
+    error?: string;
+}
+
+/**
+ * Request to update a conversation
+ */
+export interface UpdateConversationRequest {
+    title: string;
+}
+
+/**
+ * Response from updating a conversation
+ */
+export interface UpdateConversationResponse {
+    success: boolean;
+    conversation: Conversation;
     error?: string;
 }
 

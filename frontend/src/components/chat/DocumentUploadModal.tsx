@@ -12,7 +12,7 @@ import type { DocumentMetadata } from '@shared/types';
 interface DocumentUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onStartClassroom: (documentIds: string[]) => void;
+  onStartClassroom: (documentIds: string[], title: string) => void;
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'error';
@@ -24,6 +24,7 @@ export function DocumentUploadModal({ isOpen, onClose, onStartClassroom }: Docum
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [classroomName, setClassroomName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const acceptedFileTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
@@ -142,9 +143,14 @@ export function DocumentUploadModal({ isOpen, onClose, onStartClassroom }: Docum
       return;
     }
 
+    if (!classroomName.trim()) {
+      setErrorMessage('Please enter a classroom name.');
+      return;
+    }
+
     setIsStarting(true);
     try {
-      onStartClassroom(documentIds);
+      onStartClassroom(documentIds, classroomName.trim());
     } catch (error) {
       setIsStarting(false);
       const errorMessage = error instanceof Error ? error.message : 'Failed to start classroom. Please try again.';
@@ -301,12 +307,28 @@ export function DocumentUploadModal({ isOpen, onClose, onStartClassroom }: Docum
             </div>
           )}
 
-          {/* Start Classroom Button */}
+          {/* Classroom Name Input */}
           {uploadedDocuments.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
+              <div>
+                <label htmlFor="classroom-name" className="block text-sm font-medium text-gray-900 mb-2">
+                  Classroom Name
+                </label>
+                <input
+                  id="classroom-name"
+                  type="text"
+                  value={classroomName}
+                  onChange={(e) => setClassroomName(e.target.value)}
+                  placeholder="Enter classroom name"
+                  disabled={uploadStatus === 'uploading' || isStarting}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                />
+              </div>
+
+              {/* Start Classroom Button */}
               <button
                 onClick={handleStartClassroom}
-                disabled={uploadStatus === 'uploading' || isStarting}
+                disabled={uploadStatus === 'uploading' || isStarting || !classroomName.trim()}
                 className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isStarting ? (

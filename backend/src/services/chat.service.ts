@@ -101,7 +101,21 @@ export class ChatService {
 
             // Create conversation
             const conversationId = uuidv4();
-            const title = request.initialMessage?.slice(0, 50) || 'New Conversation';
+            // Use provided title if available, otherwise fall back to existing logic
+            let title: string;
+            if (request.title && request.title.trim().length > 0) {
+                title = request.title.trim();
+            } else if (request.initialMessage && request.initialMessage.trim().length > 0) {
+                title = request.initialMessage.trim().slice(0, 50);
+            } else {
+                title = 'New Conversation';
+            }
+            // Ensure title doesn't exceed 100 characters
+            if (title.length > 100) {
+                title = title.slice(0, 100);
+            }
+
+            logger.info(`Creating conversation with title: "${title}" (from request.title: "${request.title}")`);
 
             const { data, error } = await supabase
                 .from('conversations')
@@ -495,6 +509,83 @@ export class ChatService {
 
         } catch (error: any) {
             logger.error(`Error getting conversations by document: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Update conversation title
+     */
+    static async updateConversationTitle(conversationId: string, title: string): Promise<Conversation> {
+        try {
+            // Validate title
+            const trimmedTitle = title.trim();
+            if (!trimmedTitle || trimmedTitle.length === 0) {
+                throw new Error('Title must be a non-empty string');
+            }
+
+            // Ensure title doesn't exceed 100 characters
+            const finalTitle = trimmedTitle.length > 100 ? trimmedTitle.slice(0, 100) : trimmedTitle;
+
+            // Check if conversation exists
+            const { data: existingConv, error: fetchError } = await supabase
+                .from('conversations')
+                .select('id')
+                .eq('id', conversationId)
+                .single();
+
+            if (fetchError || !existingConv) {
+                logger.error(`Conversation not found: ${conversationId}`);
+                throw new Error('Conversation not found');
+            }
+
+            // Update conversation title
+            const { data, error } = await supabase
+                .from('conversations')
+                .update({
+                    title: finalTitle,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', conversationId)
+                .select()
+                .single();
+
+            if (error) {
+                logger.error(`Failed to update conversation title: ${error.message}`);
+                throw new Error(`Failed to update conversation title: ${error.message}`);
+            }
+
+            // Enrich with document names (similar to getAllConversations)
+            const { data: convDocs } = await supabase
+                .from('conversation_documents')
+                .select('document_id')
+                .eq('conversation_id', conversationId);
+
+            const docIds = (convDocs || []).map(d => d.document_id);
+
+            // Fetch document names
+            const { data: docDetails } = await supabase
+                .from('documents')
+                .select('id, original_name')
+                .in('id', docIds);
+
+            const documentIds: string[] = docIds;
+            const documentNames: string[] = (docDetails || []).map(d => d.original_name);
+
+            const conversation: Conversation = {
+                id: data.id,
+                title: data.title || null,
+                documentIds,
+                documentNames,
+                createdAt: data.created_at,
+                updatedAt: data.updated_at
+            };
+
+            logger.info(`Updated conversation title: ${conversationId} -> ${finalTitle}`);
+            return conversation;
+
+        } catch (error: any) {
+            logger.error(`Error updating conversation title: ${error.message}`);
             throw error;
         }
     }

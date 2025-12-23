@@ -22,6 +22,8 @@ export type {
     GetConversationResponse,
     GetAllConversationsResponse,
     DeleteConversationResponse,
+    UpdateConversationRequest,
+    UpdateConversationResponse,
     // Document API
     DocumentUploadResponse,
     GetDocumentsResponse,

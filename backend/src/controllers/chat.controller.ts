@@ -7,7 +7,9 @@ import {
     SendMessageResponse,
     GetConversationResponse,
     GetAllConversationsResponse,
-    DeleteConversationResponse
+    DeleteConversationResponse,
+    UpdateConversationRequest,
+    UpdateConversationResponse
 } from '../types/chat.types';
 import { createLogger } from '../utils/logger';
 
@@ -20,7 +22,7 @@ export class ChatController {
      */
     static async startConversation(req: Request, res: Response): Promise<void> {
         try {
-            const { documentIds, initialMessage } = req.body as StartConversationRequest;
+            const { documentIds, initialMessage, title } = req.body as StartConversationRequest;
 
             // Validate input
             if (!documentIds || !Array.isArray(documentIds) || documentIds.length === 0) {
@@ -31,11 +33,12 @@ export class ChatController {
                 return;
             }
 
-            logger.info(`Starting new conversation for ${documentIds.length} document(s): ${documentIds.join(', ')}`);
+            logger.info(`Starting new conversation for ${documentIds.length} document(s): ${documentIds.join(', ')}${title ? ` with title: "${title}"` : ''}`);
 
             const { conversation, initialMessages } = await ChatService.createConversation({
                 documentIds,
-                initialMessage
+                initialMessage,
+                title
             });
 
             res.status(201).json({
@@ -171,6 +174,50 @@ export class ChatController {
                 success: false,
                 error: error.message
             });
+        }
+    }
+
+    /**
+     * PATCH /api/chat/conversations/:conversationId
+     * Update a conversation title
+     */
+    static async updateConversation(req: Request, res: Response): Promise<void> {
+        try {
+            const { conversationId } = req.params;
+            const { title } = req.body as UpdateConversationRequest;
+
+            // Validate input
+            if (!conversationId) {
+                res.status(400).json({
+                    success: false,
+                    error: 'Conversation ID is required'
+                } as UpdateConversationResponse);
+                return;
+            }
+
+            if (!title || typeof title !== 'string' || title.trim().length === 0) {
+                res.status(400).json({
+                    success: false,
+                    error: 'Title must be a non-empty string'
+                } as UpdateConversationResponse);
+                return;
+            }
+
+            logger.info(`Updating conversation title: ${conversationId} -> ${title.trim()}`);
+
+            const conversation = await ChatService.updateConversationTitle(conversationId, title.trim());
+
+            res.status(200).json({
+                success: true,
+                conversation
+            } as UpdateConversationResponse);
+
+        } catch (error: any) {
+            logger.error(`Error updating conversation: ${error.message}`);
+            res.status(500).json({
+                success: false,
+                error: error.message
+            } as UpdateConversationResponse);
         }
     }
 
