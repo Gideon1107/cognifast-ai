@@ -10,6 +10,9 @@
 [![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)](https://www.langchain.com/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)](https://langchain-ai.github.io/langgraph/)
 
+[![Open Source](https://img.shields.io/badge/Open%20Source-Yes-green?style=for-the-badge)](https://github.com/Gideon1107/Cognifast-ai)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+
 *Transform your learning experience with AI-powered document analysis, interactive chat, and intelligent knowledge evaluation*
 
 [Features](#-features) • [Demo](#-demo) • [Getting Started](#-getting-started) • [Documentation](#-documentation) • [Tech Stack](#-tech-stack)
@@ -30,7 +33,7 @@ https://github.com/user-attachments/assets/8f046bff-4917-4d31-80a5-9722d1843294
 
 ---
 
-## Overview
+## 🎯 Overview
 
 Cognifast AI is an intelligent learning platform that revolutionizes how you interact with educational content. Upload documents or web pages, chat with an AI assistant that understands your content, get instant answers with source citations, and test your knowledge with AI-generated quizzes.
 
@@ -46,9 +49,9 @@ Cognifast AI is an intelligent learning platform that revolutionizes how you int
 
 ---
 
-## Features
+## ✨ Features
 
-### Source Management
+### 📄 Source Management
 
 - **Multiple File Types**: Support for PDF, DOC, DOCX, TXT files
 - **Web Page Support**: Upload and process web page URLs with automatic content extraction
@@ -56,7 +59,7 @@ Cognifast AI is an intelligent learning platform that revolutionizes how you int
 - **Smart Processing**: Automatic text extraction, chunking, and vector embedding generation
 - **Source Organization**: View all sources associated with each classroom
 
-### Interactive AI Chat
+### 💬 Interactive AI Chat
 
 - **Real-Time Streaming**: Token-by-token response generation via WebSocket
 - **Context-Aware Responses**: AI understands your uploaded sources and provides grounded answers
@@ -67,14 +70,14 @@ Cognifast AI is an intelligent learning platform that revolutionizes how you int
   - "Generating response..." (Response generation)
 - **Quality Assurance**: Automatic response quality evaluation with retry mechanism
 
-### Source Citations
+### 🔗 Source Citations
 
 - **Numbered Citations**: Clean `[1]`, `[2]` citation format in responses
 - **Hover Tooltips**: Hover over citations to see the exact source chunk text
 - **Source Attribution**: Know exactly which source and section informed each answer
 - **Visual Indicators**: Modern citation styling with smooth hover effects
 
-### Modern UI/UX
+### 🎨 Modern UI/UX
 
 - **NotebookLM-Inspired Design**: Clean, modern interface inspired by Google's NotebookLM
 - **3-Column Layout**: 
@@ -86,7 +89,7 @@ Cognifast AI is an intelligent learning platform that revolutionizes how you int
 - **Auto-Scroll**: Automatically scrolls to latest messages
 - **Persistent State**: Conversations and messages persist across page reloads
 
-### Conversation Management
+### 📊 Conversation Management
 
 - **Dashboard View**: See all your classrooms (conversations) in one place
 - **Custom Titles**: Name your classrooms when creating them
@@ -94,7 +97,7 @@ Cognifast AI is an intelligent learning platform that revolutionizes how you int
 - **Skeleton Loading**: Smooth loading states to prevent UI flicker
 - **Recent Activity**: Conversations sorted by creation date
 
-### Quiz Generation (Coming Soon)
+### 📝 Quiz Generation (Coming Soon)
 
 - **Automated Quiz Creation**: AI generates quizzes based on your uploaded source content
 - **Multiple Question Types**: 
@@ -108,7 +111,7 @@ Cognifast AI is an intelligent learning platform that revolutionizes how you int
 - **Knowledge Gap Analysis**: Identify areas that need more attention
 - **Studio Panel Integration**: Access quizzes from the Studio panel in the chat interface
 
-### Advanced Formatting
+### 🧮 Advanced Formatting
 
 - **LaTeX Rendering**: Perfect display of mathematical and chemical equations
   - Block equations: `\[...\]` or `$$...$$`
@@ -231,12 +234,12 @@ Cognifast AI is an intelligent learning platform that revolutionizes how you int
 
 The Chat interface features a **3-column layout**:
 
-#### Sources Panel (Left - 20%)
+#### Sources Panel
 - Displays all sources (files and URLs) associated with the classroom
 - Shows source type icons (file icon for documents, globe icon for URLs)
 - Modern card-style design with source names and metadata
 
-#### Chat Panel (Center - 50%)
+#### Chat Panel
 - **Main conversation area** with message history
 - **Input field** at the bottom for typing questions
 - **Send button** (arrow icon) to submit messages
@@ -245,7 +248,7 @@ The Chat interface features a **3-column layout**:
 - **Citations**: Hover over numbered citations `[1]`, `[2]` to see source chunks
 - **Auto-scroll**: Automatically scrolls to latest messages
 
-#### Studio Panel (Right - 30%)
+#### Studio Panel
 - **Quiz Generation**: Create quizzes from your source content (Coming Soon)
   - Select difficulty level (Easy, Medium, Hard)
   - Generate questions based on your sources
