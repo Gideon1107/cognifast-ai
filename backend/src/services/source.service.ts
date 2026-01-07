@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import mammoth from 'mammoth';
 import { SourceMetadata } from '../types/source.types';
+import { WebScraperService } from './web-scraper.service';
 
 // Import pdf-parse v2 - uses new API with PDFParse class
 // const pdfParseLib = require('pdf-parse');
@@ -22,9 +23,7 @@ export class SourceService {
                 case 'txt':
                     return await this.extractTextFromTXT(filePathOrUrl);
                 case 'url':
-                    // URL extraction will be handled by WebScraperService
-                    // This method signature is kept for consistency
-                    throw new Error('URL extraction should be handled by WebScraperService');
+                    return await this.extractTextFromURL(filePathOrUrl);
                 default:
                     throw new Error(`Unsupported file type: ${fileType}`);
             }
@@ -70,6 +69,17 @@ export class SourceService {
     }
 
     /**
+     * Extract text from URL using WebScraperService
+     */
+    private static async extractTextFromURL(url: string): Promise<string> {
+        try {
+            return await WebScraperService.scrapeUrl(url);
+        } catch (error: any) {
+            throw new Error(`URL extraction failed: ${error.message}`);
+        }
+    }
+
+    /**
      * Determine file type from filename or URL
      */
     static getFileType(filenameOrUrl: string): 'pdf' | 'docx' | 'doc' | 'txt' | 'url' {
@@ -95,13 +105,35 @@ export class SourceService {
 
     /**
      * Get file size in bytes
+     * For URLs, returns 0 (size is not applicable)
      */
-    static getFileSize(filePath: string): number {
+    static getFileSize(filePathOrUrl: string): number {
         try {
-            const stats = fs.statSync(filePath);
+            // URLs don't have a file size
+            if (filePathOrUrl.startsWith('http://') || filePathOrUrl.startsWith('https://')) {
+                return 0;
+            }
+            const stats = fs.statSync(filePathOrUrl);
             return stats.size;
         } catch (error: any) {
             throw new Error(`Failed to get file size: ${error.message}`);
+        }
+    }
+
+    /**
+     * Get page title from URL
+     * Returns the hostname if title cannot be retrieved
+     */
+    static async getUrlTitle(url: string): Promise<string> {
+        try {
+            return await WebScraperService.getPageTitle(url);
+        } catch (error: any) {
+            // Fallback to hostname if title retrieval fails
+            try {
+                return new URL(url).hostname;
+            } catch {
+                return url;
+            }
         }
     }
 }

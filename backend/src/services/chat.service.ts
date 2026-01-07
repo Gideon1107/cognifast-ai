@@ -44,18 +44,20 @@ export class ChatService {
 
                     const sourceIds = (convSources || []).map(s => s.source_id);
 
-                    // Fetch source names
+                    // Fetch source names and types
                     const { data: sourceDetails } = await supabase
                         .from('sources')
-                        .select('id, original_name')
+                        .select('id, original_name, file_type')
                         .in('id', sourceIds);
 
                     const sourceNames = (sourceDetails || []).map(s => s.original_name);
+                    const sourceTypes = (sourceDetails || []).map(s => s.file_type as 'pdf' | 'docx' | 'doc' | 'txt' | 'url');
 
                     return {
                         id: conv.id,
                         sourceIds: sourceIds,
                         sourceNames: sourceNames,
+                        sourceTypes: sourceTypes,
                         title: conv.title,
                         createdAt: conv.created_at,
                         updatedAt: conv.updated_at
@@ -86,7 +88,7 @@ export class ChatService {
             // Validate all sources exist
             const { data: sources, error: sourceError } = await supabase
                 .from('sources')
-                .select('id, original_name')
+                .select('id, original_name, file_type')
                 .in('id', sourceIds);
 
             if (sourceError) {
@@ -156,6 +158,7 @@ export class ChatService {
                 id: data.id,
                 sourceIds: sourceIds,
                 sourceNames: sources.map(s => s.original_name),
+                sourceTypes: sources.map(s => s.file_type as 'pdf' | 'docx' | 'doc' | 'txt' | 'url'),
                 title: data.title,
                 createdAt: data.created_at,
                 updatedAt: data.updated_at
@@ -393,14 +396,16 @@ export class ChatService {
 
             const sourceIds = (convSources || []).map(cs => cs.source_id);
 
-            // Get source names
+            // Get source names and types
             let sourceNames: string[] = [];
+            let sourceTypes: ('pdf' | 'docx' | 'doc' | 'txt' | 'url')[] = [];
             if (sourceIds.length > 0) {
                 const { data: sources } = await supabase
                     .from('sources')
-                    .select('id, original_name')
+                    .select('id, original_name, file_type')
                     .in('id', sourceIds);
                 sourceNames = (sources || []).map(s => s.original_name);
+                sourceTypes = (sources || []).map(s => s.file_type as 'pdf' | 'docx' | 'doc' | 'txt' | 'url');
             }
 
             // Get messages
@@ -429,6 +434,7 @@ export class ChatService {
                     id: conversation.id,
                     sourceIds: sourceIds,
                     sourceNames: sourceNames,
+                    sourceTypes: sourceTypes,
                     title: conversation.title,
                     createdAt: conversation.created_at,
                     updatedAt: conversation.updated_at
@@ -563,20 +569,22 @@ export class ChatService {
 
             const sourceIds = (convSources || []).map(s => s.source_id);
 
-            // Fetch source names
+            // Fetch source names and types
             const { data: sourceDetails } = await supabase
                 .from('sources')
-                .select('id, original_name')
+                .select('id, original_name, file_type')
                 .in('id', sourceIds);
 
             const sourceIdsArray: string[] = sourceIds;
             const sourceNames: string[] = (sourceDetails || []).map(s => s.original_name);
+            const sourceTypes: ('pdf' | 'docx' | 'doc' | 'txt' | 'url')[] = (sourceDetails || []).map(s => s.file_type as 'pdf' | 'docx' | 'doc' | 'txt' | 'url');
 
             const conversation: Conversation = {
                 id: data.id,
                 title: data.title || null,
                 sourceIds: sourceIdsArray,
                 sourceNames: sourceNames,
+                sourceTypes: sourceTypes,
                 createdAt: data.created_at,
                 updatedAt: data.updated_at
             };

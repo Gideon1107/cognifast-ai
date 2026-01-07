@@ -11,6 +11,7 @@ export interface RetrievedChunk {
     id: string;
     sourceId: string; 
     sourceName: string;
+    sourceType?: 'pdf' | 'docx' | 'doc' | 'txt' | 'url';
     chunkText: string;
     chunkIndex: number;
     similarity: number; // 0-1, higher is more similar
@@ -30,7 +31,7 @@ export class RetrievalService {
      * Retrieve relevant chunks using vector similarity search
      * 
      * @param query - User's question or search query
-     * @param sourceIds - Array of source IDs to search within (renamed from documentIds)
+     * @param sourceIds - Array of source IDs to search within
      * @param topK - Number of chunks to return (default: 5)
      * @returns Array of retrieved chunks with similarity scores
      */
@@ -107,45 +108,12 @@ export class RetrievalService {
             const topChunks = data.slice(0, topK);
 
             const enrichedChunks = await this.enrichWithSourceNames(topChunks);
-            
-            // Filter out page markers and very short chunks (likely formatting artifacts)
-            const filteredChunks = enrichedChunks.filter(chunk => {
-                const text = chunk.chunkText.trim();
-                // Filter out page markers like "-- 1 of 4 --" or "-- X of Y --"
-                const isPageMarker = /^--\s*\d+\s+of\s+\d+\s*--$/i.test(text);
-                // Filter out very short chunks (< 30 chars) that are likely formatting
-                const isTooShort = text.length < 30;
-                return !isPageMarker && !isTooShort;
-            });
 
-            // If we filtered out chunks, try to get more to reach topK
-            let finalChunks = filteredChunks;
-            if (filteredChunks.length < topK && data.length > topK) {
-                logger.warn(`Only ${filteredChunks.length} chunks after filtering, trying to get more...`);
-                // Get more chunks and filter them - expand search to up to 3x topK
-                const additionalChunks = data.slice(topK, Math.min(topK * 3, data.length));
-                const enrichedAdditional = await this.enrichWithSourceNames(additionalChunks);
-                const filteredAdditional = enrichedAdditional.filter(chunk => {
-                    const text = chunk.chunkText.trim();
-                    const isPageMarker = /^--\s*\d+\s+of\s+\d+\s*--$/i.test(text);
-                    const isTooShort = text.length < 30;
-                    return !isPageMarker && !isTooShort;
-                });
-                finalChunks = [...filteredChunks, ...filteredAdditional].slice(0, topK);
-                logger.info(`After getting more chunks: ${finalChunks.length} total`);
-            }
+            // Page markers are already filtered during chunking, so no need to filter here
+            const avgSimilarity = enrichedChunks.reduce((sum, c) => sum + c.similarity, 0) / enrichedChunks.length;
+            logger.info(`✅ RPC SUCCESS: ${enrichedChunks.length} chunks, avg similarity: ${avgSimilarity.toFixed(3)}`);
 
-            if (finalChunks.length === 0) {
-                logger.error(`⚠️ All chunks were filtered out! Original: ${enrichedChunks.length}, After filter: 0`);
-                // Return original chunks if all were filtered
-                logger.warn(`Returning unfiltered chunks to avoid empty results`);
-                return enrichedChunks.slice(0, topK);
-            }
-
-            const avgSimilarity = finalChunks.reduce((sum, c) => sum + c.similarity, 0) / finalChunks.length;
-            logger.info(`✅ RPC SUCCESS: ${finalChunks.length} chunks (filtered from ${enrichedChunks.length}), avg similarity: ${avgSimilarity.toFixed(3)}`);
-
-            return finalChunks;
+            return enrichedChunks;
 
         } catch (error: any) {
             logger.error(`Error in retrieveRelevantChunks: ${error.message}`);
@@ -161,24 +129,28 @@ export class RetrievalService {
             // Get unique source IDs
             const sourceIds = [...new Set(chunks.map((c: any) => c.source_id))];
             
-            // Fetch source names
+            // Fetch source names and types
             const { data: sources, error } = await supabase
                 .from('sources')
-                .select('id, original_name')
+                .select('id, original_name, file_type')
                 .in('id', sourceIds);
             
             if (error) throw error;
             
-            // Create a map of source ID to source name
-            const sourceMap = new Map(
+            // Create maps of source ID to source name and type
+            const sourceNameMap = new Map(
                 (sources || []).map((s: any) => [s.id, s.original_name])
             );
+            const sourceTypeMap = new Map(
+                (sources || []).map((s: any) => [s.id, s.file_type as 'pdf' | 'docx' | 'doc' | 'txt' | 'url'])
+            );
             
-            // Map chunks with source names
+            // Map chunks with source names and types
             return chunks.map((chunk: any) => ({
                 id: chunk.id,
                 sourceId: chunk.source_id,
-                sourceName: sourceMap.get(chunk.source_id) || 'Unknown',
+                sourceName: sourceNameMap.get(chunk.source_id) || 'Unknown',
+                sourceType: sourceTypeMap.get(chunk.source_id),
                 chunkText: chunk.chunk_text,
                 chunkIndex: chunk.chunk_index,
                 similarity: Number(chunk.similarity)
@@ -190,6 +162,7 @@ export class RetrievalService {
                 id: chunk.id,
                 sourceId: chunk.source_id,
                 sourceName: 'Unknown',
+                sourceType: undefined,
                 chunkText: chunk.chunk_text,
                 chunkIndex: chunk.chunk_index,
                 similarity: Number(chunk.similarity)
@@ -277,46 +250,21 @@ export class RetrievalService {
                 similarity: c.similarity // Already cosine similarity (0-1)
             }));
 
-            // Filter out page markers and very short chunks
-            const filteredEnriched = enriched.filter(c => {
-                const text = c.chunkText.trim();
-                const isPageMarker = /^--\s*\d+\s+of\s+\d+\s*--$/i.test(text);
-                const isTooShort = text.length < 30;
-                return !isPageMarker && !isTooShort;
-            });
-
-            // If we filtered out chunks, try to get more
-            let finalEnriched = filteredEnriched;
-            if (filteredEnriched.length < topK && chunksWithSimilarity.length > topK) {
-                const additionalChunks = chunksWithSimilarity.slice(topK, Math.min(topK * 2, chunksWithSimilarity.length));
-                const enrichedAdditional = additionalChunks.map(c => ({
-                    id: c.id,
-                    sourceId: c.source_id,
-                    chunkText: c.chunk_text,
-                    chunkIndex: c.chunk_index,
-                    similarity: c.similarity
-                }));
-                const filteredAdditional = enrichedAdditional.filter(c => {
-                    const text = c.chunkText.trim();
-                    const isPageMarker = /^--\s*\d+\s+of\s+\d+\s*--$/i.test(text);
-                    const isTooShort = text.length < 30;
-                    return !isPageMarker && !isTooShort;
-                });
-                finalEnriched = [...filteredEnriched, ...filteredAdditional].slice(0, topK);
-            }
-
-            // Add source names
-            const uniqueSourceIds = [...new Set(finalEnriched.map(c => c.sourceId))];
+            // Page markers are already filtered during chunking, so no need to filter here
+            // Add source names and types
+            const uniqueSourceIds = [...new Set(enriched.map(c => c.sourceId))];
             const { data: sources } = await supabase
                 .from('sources')
-                .select('id, original_name')
+                .select('id, original_name, file_type')
                 .in('id', uniqueSourceIds);
             
-            const sourceMap = new Map((sources || []).map(s => [s.id, s.original_name]));
+            const sourceNameMap = new Map((sources || []).map(s => [s.id, s.original_name]));
+            const sourceTypeMap = new Map((sources || []).map(s => [s.id, s.file_type as 'pdf' | 'docx' | 'doc' | 'txt' | 'url']));
             
-            const finalChunks = finalEnriched.map(chunk => ({
+            const finalChunks = enriched.map(chunk => ({
                 ...chunk,
-                sourceName: sourceMap.get(chunk.sourceId) || 'Unknown'
+                sourceName: sourceNameMap.get(chunk.sourceId) || 'Unknown',
+                sourceType: sourceTypeMap.get(chunk.sourceId)
             }));
 
             return finalChunks;
@@ -370,19 +318,21 @@ export class RetrievalService {
 
             logger.info(`Retrieved ${data.length} chunks for source`);
 
-            // Fetch source name
+            // Fetch source name and type
             const { data: source } = await supabase
                 .from('sources')
-                .select('original_name')
+                .select('original_name, file_type')
                 .eq('id', sourceId)
                 .single();
 
             const sourceName = source?.original_name || 'Unknown';
+            const sourceType = source?.file_type as 'pdf' | 'docx' | 'doc' | 'txt' | 'url' | undefined;
 
             return data.map((chunk: any) => ({
                 id: chunk.id,
                 sourceId: chunk.source_id,
                 sourceName: sourceName,
+                sourceType: sourceType,
                 chunkText: chunk.chunk_text,
                 chunkIndex: chunk.chunk_index,
                 similarity: 1.0 // Not based on similarity for this query
@@ -411,20 +361,24 @@ export class RetrievalService {
             // Get unique source IDs
             const sourceIds = [...new Set(data.map((c: any) => c.source_id))];
 
-            // Fetch source names
+            // Fetch source names and types
             const { data: sources } = await supabase
                 .from('sources')
-                .select('id, original_name')
+                .select('id, original_name, file_type')
                 .in('id', sourceIds);
 
-            const sourceMap = new Map(
+            const sourceNameMap = new Map(
                 (sources || []).map((s: any) => [s.id, s.original_name])
+            );
+            const sourceTypeMap = new Map(
+                (sources || []).map((s: any) => [s.id, s.file_type as 'pdf' | 'docx' | 'doc' | 'txt' | 'url'])
             );
 
             return data.map((chunk: any) => ({
                 id: chunk.id,
                 sourceId: chunk.source_id,
-                sourceName: sourceMap.get(chunk.source_id) || 'Unknown',
+                sourceName: sourceNameMap.get(chunk.source_id) || 'Unknown',
+                sourceType: sourceTypeMap.get(chunk.source_id),
                 chunkText: chunk.chunk_text,
                 chunkIndex: chunk.chunk_index,
                 similarity: 1.0

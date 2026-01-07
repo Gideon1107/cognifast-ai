@@ -5,8 +5,8 @@
 
 import { useState, useRef } from 'react';
 import type { DragEvent } from 'react';
-import { X, Upload, FileText, File, FileCheck, AlertCircle, Trash2 } from 'lucide-react';
-import { uploadSource } from '../../lib/api';
+import { X, Upload, FileText, File, FileCheck, AlertCircle, Trash2, Link } from 'lucide-react';
+import { uploadSource, uploadUrlSource } from '../../lib/api';
 import type { SourceMetadata } from '@shared/types';
 
 interface SourceUploadModalProps {
@@ -16,6 +16,7 @@ interface SourceUploadModalProps {
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'error';
+type UploadMode = 'file' | 'url';
 
 export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceUploadModalProps) {
   const [uploadedSources, setUploadedSources] = useState<SourceMetadata[]>([]);
@@ -25,6 +26,8 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
   const [isDragging, setIsDragging] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [classroomName, setClassroomName] = useState('');
+  const [uploadMode, setUploadMode] = useState<UploadMode>('file');
+  const [urlInput, setUrlInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const acceptedFileTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
@@ -38,6 +41,21 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
       return 'File size must be less than 10MB.';
     }
     return null;
+  };
+
+  const validateUrl = (url: string): string | null => {
+    if (!url.trim()) {
+      return 'Please enter a URL.';
+    }
+    try {
+      const urlObj = new URL(url);
+      if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+        return 'URL must start with http:// or https://';
+      }
+      return null;
+    } catch {
+      return 'Please enter a valid URL.';
+    }
   };
 
   const handleFileUpload = async (file: File) => {
@@ -86,6 +104,53 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
     }
   };
 
+  const handleUrlUpload = async (url: string) => {
+    const validationError = validateUrl(url);
+    if (validationError) {
+      setErrorMessage(validationError);
+      setUploadStatus('error');
+      return;
+    }
+
+    setUploadStatus('uploading');
+    setUploadProgress(0);
+    setErrorMessage(null);
+
+    try {
+      // Simulate progress for URL scraping
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 300);
+
+      const response = await uploadUrlSource(url.trim());
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      if (response.success && response.source) {
+        // Add source to the list and keep modal open
+        setUploadedSources((prev) => [...prev, response.source!]);
+        setUploadStatus('idle');
+        setUploadProgress(0);
+        setErrorMessage(null);
+        setUrlInput(''); // Clear URL input after successful upload
+      } else {
+        throw new Error(response.error || 'Upload failed');
+      }
+    } catch (error) {
+      setUploadStatus('error');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload URL. Please try again.';
+      setErrorMessage(errorMessage);
+      setUploadProgress(0);
+    }
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -121,6 +186,8 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
     setErrorMessage(null);
     setIsDragging(false);
     setUploadedSources([]); // Reset uploaded sources when closing
+    setUrlInput(''); // Clear URL input
+    setUploadMode('file'); // Reset to file mode
     onClose();
   };
 
@@ -190,6 +257,44 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
 
         {/* Content */}
         <div className="p-6">
+          {/* Upload Mode Tabs */}
+          <div className="flex gap-2 mb-6 border-b border-gray-200">
+            <button
+              onClick={() => {
+                setUploadMode('file');
+                setErrorMessage(null);
+              }}
+              disabled={uploadStatus === 'uploading' || isStarting}
+              className={`px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                uploadMode === 'file'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <File className="w-4 h-4" />
+                <span>Upload File</span>
+              </div>
+            </button>
+            <button
+              onClick={() => {
+                setUploadMode('url');
+                setErrorMessage(null);
+              }}
+              disabled={uploadStatus === 'uploading' || isStarting}
+              className={`px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                uploadMode === 'url'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Link className="w-4 h-4" />
+                <span>Add URL</span>
+              </div>
+            </button>
+          </div>
+
           {/* Uploaded Sources List */}
           {uploadedSources.length > 0 && (
             <div className="mb-6">
@@ -203,12 +308,22 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <FileText className="w-5 h-5 text-blue-500 shrink-0" />
+                      {source.fileType === 'url' ? (
+                        <Link className="w-5 h-5 text-blue-500 shrink-0" />
+                      ) : (
+                        <FileText className="w-5 h-5 text-blue-500 shrink-0" />
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
                           {source.originalName || source.filename}
                         </p>
-                        <p className="text-xs text-gray-500">{formatFileSize(source.fileSize)}</p>
+                        {source.fileType === 'url' ? (
+                          <p className="text-xs text-gray-500 truncate" title={source.sourceUrl}>
+                            {source.sourceUrl}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-500">{formatFileSize(source.fileSize)}</p>
+                        )}
                       </div>
                     </div>
                     <button
@@ -225,67 +340,124 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
             </div>
           )}
 
-          {/* Drag & Drop Zone */}
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${
-              isDragging
-                ? 'border-blue-500 bg-blue-50'
-                : uploadStatus === 'uploading' || isStarting
-                ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
-            }`}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.docx,.txt"
-              onChange={handleFileSelect}
-              className="hidden"
-              disabled={uploadStatus === 'uploading' || isStarting}
-            />
+          {/* File Upload Mode */}
+          {uploadMode === 'file' && (
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${
+                isDragging
+                  ? 'border-blue-500 bg-blue-50'
+                  : uploadStatus === 'uploading' || isStarting
+                  ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                  : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.docx,.txt"
+                onChange={handleFileSelect}
+                className="hidden"
+                disabled={uploadStatus === 'uploading' || isStarting}
+              />
 
-            {uploadStatus === 'uploading' ? (
-              <div className="space-y-4">
-                <div className="w-16 h-16 mx-auto">
-                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent"></div>
-                </div>
-                <div>
-                  <p className="text-lg font-medium text-gray-900">Uploading...</p>
-                  <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${uploadProgress}%` }}
-                    ></div>
+              {uploadStatus === 'uploading' ? (
+                <div className="space-y-4">
+                  <div className="w-16 h-16 mx-auto">
+                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent"></div>
                   </div>
-                  <p className="text-sm text-gray-600 mt-2">{uploadProgress}%</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <Upload className="w-16 h-16 text-gray-400 mx-auto" />
-                <div>
-                  <p className="text-lg font-medium text-gray-900">
-                    {uploadedSources.length > 0
-                      ? 'Add another source'
-                      : 'Drag and drop your source here'}
-                  </p>
-                  <p className="text-sm text-gray-600 mt-2">or click to browse</p>
-                </div>
-                <div className="flex items-center justify-center gap-4 mt-6">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <File className="w-4 h-4" />
-                    <span>PDF, DOCX, TXT</span>
+                  <div>
+                    <p className="text-lg font-medium text-gray-900">Uploading...</p>
+                    <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-2">{uploadProgress}%</p>
                   </div>
-                  <span className="text-gray-400">•</span>
-                  <span className="text-sm text-gray-600">Max 10MB</span>
                 </div>
+              ) : (
+                <div className="space-y-4">
+                  <Upload className="w-16 h-16 text-gray-400 mx-auto" />
+                  <div>
+                    <p className="text-lg font-medium text-gray-900">
+                      {uploadedSources.length > 0
+                        ? 'Add another source'
+                        : 'Drag and drop your source here'}
+                    </p>
+                    <p className="text-sm text-gray-600 mt-2">or click to browse</p>
+                  </div>
+                  <div className="flex items-center justify-center gap-4 mt-6">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <File className="w-4 h-4" />
+                      <span>PDF, DOCX, TXT</span>
+                    </div>
+                    <span className="text-gray-400">•</span>
+                    <span className="text-sm text-gray-600">Max 10MB</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* URL Upload Mode */}
+          {uploadMode === 'url' && (
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="url-input" className="block text-sm font-medium text-gray-900 mb-2">
+                  Web Page URL
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="url-input"
+                    type="url"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !uploadStatus && urlInput.trim()) {
+                        handleUrlUpload(urlInput);
+                      }
+                    }}
+                    placeholder="https://example.com/article"
+                    disabled={uploadStatus === 'uploading' || isStarting}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  />
+                  <button
+                    onClick={() => handleUrlUpload(urlInput)}
+                    disabled={uploadStatus === 'uploading' || isStarting || !urlInput.trim()}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {uploadStatus === 'uploading' ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        <span>Scraping...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Link className="w-4 h-4" />
+                        <span>Add URL</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                {uploadStatus === 'uploading' && (
+                  <div className="mt-4">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-2 text-center">{uploadProgress}%</p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Error Message */}
           {uploadStatus === 'error' && errorMessage && (

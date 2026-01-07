@@ -20,7 +20,7 @@ export function Navbar() {
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
             <div className="w-8 h-8 bg-blue-600 rounded-lg"></div>
-            <span className="text-xl font-semibold text-gray-900 cursor-pointer sansation-regular">Cognifast AI</span>
+            <span className="text-xl font-semibold text-gray-900 cursor-pointer sansation-regular">Cognifast</span>
           </button>
           
           <nav className="flex items-center gap-6">

@@ -134,12 +134,6 @@ export async function executeChatGraph(initialState: ConversationState): Promise
         const endTime = Date.now();
         const executionTime = endTime - startTime;
         
-        logger.info('Chat Graph Execution Completed');
-        logger.info(`Execution time: ${executionTime}ms`);
-        logger.info(`Messages generated: ${result.messages?.length || 0}`);
-        logger.info(`Retry count: ${result.retryCount}`);
-        logger.info(`Final quality: ${result.responseQuality}`);
-        
         // Update metadata
         const finalResult = {
             ...result,

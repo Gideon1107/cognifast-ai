@@ -16,6 +16,7 @@ import type {
   GetAllConversationsResponse,
   DeleteConversationResponse,
   UpdateConversationResponse,
+  UploadUrlRequest,
 } from '@shared/types';
 
 // Base URL from environment variable
@@ -61,6 +62,21 @@ export async function uploadSource(file: File): Promise<SourceUploadResponse> {
         'Content-Type': 'multipart/form-data',
       },
     });
+
+    return response.data;
+  } catch (error) {
+    return handleError(error as AxiosError);
+  }
+}
+
+/**
+ * Upload a source (URL)
+ */
+export async function uploadUrlSource(url: string): Promise<SourceUploadResponse> {
+  try {
+    const request: UploadUrlRequest = { url };
+
+    const response = await apiClient.post<SourceUploadResponse>('/sources/upload-url', request);
 
     return response.data;
   } catch (error) {
@@ -194,6 +210,7 @@ export async function deleteConversation(conversationId: string): Promise<Delete
 
 export default {
   uploadSource,
+  uploadUrlSource,
   getSources,
   getSourceById,
   startConversation,

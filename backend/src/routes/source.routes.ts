@@ -4,8 +4,11 @@ import { upload } from '../middleware/upload.middleware';
 
 const router = Router();
 
-// Upload source
-router.post('/upload', upload.single('document'), SourceController.uploadSource);
+// Upload source (file)
+router.post('/upload', upload.single('document'), SourceController.uploadFileSource);
+
+// Upload source (URL)
+router.post('/upload-url', SourceController.uploadUrlSource);
 
 // Get all sources
 router.get('/', SourceController.getAllSources);

@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Navbar } from '../components/Navbar';
 import { SourceUploadModal } from '../components/chat/SourceUploadModal';
 import { CitationTooltip } from '../components/chat/CitationTooltip';
-import { FileText, Send, Sparkles, BookOpen, ClipboardList, BarChart } from 'lucide-react';
+import { FileText, Sparkles, BookOpen, ClipboardList, BarChart, Globe, PanelRight, PanelLeft, ArrowRight } from 'lucide-react';
 import { 
   getConversation, 
   startConversation 
@@ -25,7 +25,7 @@ export function Chat() {
   const navigate = useNavigate();
   const [message, setMessage] = useState('');
   const [uploadInProgress, setUploadInProgress] = useState(false);
-  const [openCitation, setOpenCitation] = useState<{ source: MessageSource; position: { x: number; y: number } } | null>(null);
+  const [openCitation, setOpenCitation] = useState<{ source: MessageSource; position: { x: number; y: number }; placement: 'above' | 'below' } | null>(null);
 
   // Zustand store
   const {
@@ -131,18 +131,15 @@ export function Chat() {
         // Add conversation to store
         setConversation(response.conversation);
         
-        // Add any initial messages to store (should be empty, but just in case)
         if (response.messages && response.messages.length > 0) {
           addMessages(response.conversation.id, response.messages);
         }
         
-        // Navigate to conversation URL (this will cause re-render and modal will close automatically)
         navigate(`/chat/${response.conversation.id}`, { replace: true });
       }
     } catch (error) {
       console.error('Failed to start conversation:', error);
       setUploadInProgress(false);
-      // Keep modal open on error - user can retry
     }
   };
 
@@ -160,15 +157,14 @@ export function Chat() {
     const messageContent = message.trim();
     setMessage('');
 
-    // Optimistically add user message to store
+    // Add user message to store
     addMessage(conversationId, userMessage);
 
-    // Send message via WebSocket (streaming response will update store automatically)
+    // Send message via WebSocket
     try {
       sendMessageViaWebSocket(messageContent);
     } catch (error) {
       console.error('Failed to send message via WebSocket:', error);
-      // Remove optimistic message on error
       removeMessage(conversationId, userMessage.id!);
     }
   };
@@ -247,14 +243,27 @@ export function Chat() {
     // Capture rect immediately (before setTimeout) as e.currentTarget becomes null in async callback
     const rect = e.currentTarget.getBoundingClientRect();
 
+    // Calculate if there's enough space below for tooltip (max-h-96 = 384px + padding)
+    const tooltipHeight = 400;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    
+    // Determine placement: prefer below, but use above if not enough space
+    const placement: 'above' | 'below' = spaceBelow >= tooltipHeight ? 'below' : 
+                                          spaceAbove >= tooltipHeight ? 'above' : 
+                                          spaceBelow >= spaceAbove ? 'below' : 'above';
+
     // Add a slight delay before showing tooltip for smooth transition
     citationShowTimeoutRef.current = window.setTimeout(() => {
       setOpenCitation({
         source,
         position: {
           x: rect.left,
-          y: rect.top + rect.height + 8, // Position below the citation
+          y: placement === 'below' 
+            ? rect.bottom + 8  // Position below citation with 8px gap
+            : rect.top - 8,    // Position above citation with 8px gap (will be used as bottom offset)
         },
+        placement,
       });
       citationShowTimeoutRef.current = null;
     }, 150); // 150ms delay before showing (reduced for better responsiveness)
@@ -301,7 +310,7 @@ export function Chat() {
   const sources = conversation?.sourceIds.map((sourceId, index) => ({
     id: sourceId,
     name: conversation.sourceNames?.[index] || `Source ${index + 1}`,
-    selected: true,
+    type: conversation.sourceTypes?.[index] || 'pdf', // Default to 'pdf' if type not available
   })) || [];
 
   // Show loading state
@@ -320,15 +329,13 @@ export function Chat() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50" style={{ overflow: 'hidden', position: 'relative' }}>
+    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden" style={{ position: 'relative' }}>
       <Navbar />
 
       {/* Source Upload Modal */}
       <SourceUploadModal
         isOpen={showUploadModal}
         onClose={() => {
-          // Only navigate back if user manually closes modal (not after successful upload)
-          // After successful upload, handleStartClassroom will navigate to conversation
           if (!conversationId && !uploadInProgress) {
             navigate('/dashboard');
           }
@@ -337,76 +344,69 @@ export function Chat() {
       />
 
       {/* 3-Column Layout */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden justify-between px-4 pt-2 pb-4">
         {/* Left Sidebar - Sources */}
-        <div className="flex-[0_0_20%] bg-white border-r border-gray-200 flex flex-col">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Sources</h2>
+        <div className="flex-[0_0_19.5%] bg-white flex flex-col border border-gray-100 rounded-xl">
+          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-600">Sources</h2>
+            <button
+                className="p-1.5 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+                aria-label="Collapse sources panel"
+                title="Collapse Sources"
+              >
+                <PanelLeft className="w-4 h-4 text-gray-500" />
+              </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4">
-            {sources.length > 0 && (
-              <button className="w-full text-left px-3 py-2 mb-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                Select all sources
-              </button>
-            )}
-            
-            <div className="space-y-2">
+            <div className="space-y-3">
               {sources.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <FileText className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm">No sources yet</p>
+                <div className="text-center py-12 text-gray-500">
+                  <FileText className="w-10 h-10 mx-auto mb-3 text-gray-400 opacity-50" />
+                  <p className="text-sm font-medium">No sources yet</p>
+                  <p className="text-xs text-gray-400 mt-1">Upload documents or add URLs to get started</p>
                 </div>
               ) : (
                 sources.map((source) => (
                   <div
                     key={source.id}
-                    className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                      source.selected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
-                    }`}
+                    className="group flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all duration-200"
                   >
-                    <div className="w-4 h-4 mt-0.5">
-                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                        source.selected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
-                      }`}>
-                        {source.selected && (
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 12 12">
-                            <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" fill="none" />
-                          </svg>
-                        )}
-                      </div>
+                    <div className="shrink-0">
+                      {source.type === 'url' ? (
+                        <div className="w-10 h-10 rounded-lg  flex items-center justify-center">
+                          <Globe className="w-5 h-5 " />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg  flex items-center justify-center">
+                          <FileText className="w-5 h-5 " />
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-red-500 shrink-0" />
-                        <span className="text-sm font-medium text-gray-900 truncate">{source.name}</span>
-                      </div>
+                      <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-gray-700 transition-colors">
+                        {source.name}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5 capitalize">
+                        {source.type === 'url' ? 'Web Page' : source.type.toUpperCase()}
+                      </p>
                     </div>
                   </div>
                 ))
               )}
             </div>
           </div>
-
-          <div className="p-4 border-t border-gray-200">
-            <div className="text-xs text-gray-500">
-              <p className="flex items-center gap-1">
-                <Sparkles className="w-3 h-3" />
-                Try Deep Research for sources
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* Center - Chat Interface */}
-        <div className="flex-[0_0_50%] flex flex-col bg-white">
+        <div className="flex-[0_0_49.5%] flex flex-col bg-white border border-gray-100 rounded-xl">
           {/* Chat Header */}
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h1 className="text-xl font-semibold text-gray-900">
+          <div className="px-6 py-4 border-b border-gray-200 flex flex-row items-center justify-between">
+            <h1 className="text-xl font-semibold text-gray-600">
               {conversation?.title || 'New Classroom'}
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              {sources.length} source{sources.length !== 1 ? 's' : ''} • {conversationId ? 'Active now' : 'Ready to start'}
+              {sources.length} source{sources.length !== 1 ? 's' : ''}
             </p>
           </div>
 
@@ -606,9 +606,9 @@ export function Chat() {
           </div>
 
           {/* Input Area */}
-          <div className="border-t border-gray-200 p-4">
+          <div className=" pb-4 px-4 pt-1">
             <div className="max-w-4xl mx-auto">
-              <div className="flex items-end gap-2 bg-gray-50 rounded-2xl p-2 border border-gray-200 focus-within:border-blue-500 transition-colors">
+              <div className="flex items-end gap-2 bg-gray-50 rounded-2xl px-3 py-1 border border-gray-200 focus-within:border-blue-500 transition-colors">
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
@@ -626,22 +626,26 @@ export function Chat() {
                 <button
                   onClick={handleSendMessage}
                   disabled={!message.trim() || !conversationId}
-                  className="p-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  className="p-2 bg-gray-900 text-white rounded-full flex align-middle align-self-center items-center justify-center hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
-                  <Send className="w-5 h-5" />
+                  <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                {sources.length} source{sources.length !== 1 ? 's' : ''}
-              </p>
             </div>
           </div>
         </div>
 
         {/* Right Sidebar - Studio */}
-        <div className="flex-[0_0_30%] bg-white border-l border-gray-200 flex flex-col">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Studio</h2>
+        <div className="flex-[0_0_29.5%] bg-white flex flex-col border border-gray-100 rounded-xl">
+          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-600">Studio</h2>
+            <button
+                className="p-1.5 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+                aria-label="Collapse studio panel"
+                title="Collapse Studio"
+              >
+                <PanelRight className="w-4 h-4 text-gray-500" />
+              </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4">
@@ -686,6 +690,7 @@ export function Chat() {
             source={openCitation.source}
             isOpen={true}
             position={openCitation.position}
+            placement={openCitation.placement}
           />
         </div>
       )}

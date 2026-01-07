@@ -27,6 +27,7 @@ export interface MessageSource {
     chunkId: string;
     sourceId: string;
     sourceName: string;
+    sourceType?: 'pdf' | 'docx' | 'doc' | 'txt' | 'url'; // File type of the source
     chunkText: string;
     chunkIndex: number;
     similarity: number;
@@ -39,6 +40,7 @@ export interface Conversation {
     id: string;
     sourceIds: string[];
     sourceNames?: string[];
+    sourceTypes?: ('pdf' | 'docx' | 'doc' | 'txt' | 'url')[]; // File types for each source
     title?: string;
     createdAt: string;
     updatedAt: string;

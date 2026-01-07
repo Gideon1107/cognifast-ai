@@ -4,7 +4,6 @@
  */
 
 import { Server, Socket } from 'socket.io';
-import { ChatService } from '../services/chat.service';
 import { streamChatGraphWithWebSocket } from '../services/chat-stream.service';
 import { createLogger } from '../utils/logger';
 

@@ -4,6 +4,7 @@ import { SourceService } from '../services/source.service';
 import { EmbeddingService } from '../services/embedding.service';
 import { StorageService } from '../services/storage.service';
 import { SourceMetadata, SourceUploadResponse } from '../types/source.types';
+import { UploadUrlRequest } from '@shared/types';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -15,7 +16,7 @@ export class SourceController {
     /**
      * Upload and process a source (file)
      */
-    static async uploadSource(req: Request, res: Response): Promise<void> {
+    static async uploadFileSource(req: Request, res: Response): Promise<void> {
         try {
             if (!req.file) {
                 res.status(400).json({
@@ -231,6 +232,146 @@ export class SourceController {
                 message: 'Failed to fetch source',
                 error: error.message
             });
+        }
+    }
+
+    /**
+     * Upload and process a source from URL
+     */
+    static async uploadUrlSource(req: Request, res: Response): Promise<void> {
+        try {
+            const { url } = req.body as UploadUrlRequest;
+
+            if (!url || typeof url !== 'string' || url.trim().length === 0) {
+                res.status(400).json({
+                    success: false,
+                    message: 'No URL provided',
+                    error: 'Please provide a valid URL'
+                } as SourceUploadResponse);
+                return;
+            }
+
+            // Validate URL format
+            let validUrl: URL;
+            try {
+                validUrl = new URL(url);
+                if (validUrl.protocol !== 'http:' && validUrl.protocol !== 'https:') {
+                    throw new Error('Invalid protocol');
+                }
+            } catch {
+                res.status(400).json({
+                    success: false,
+                    message: 'Invalid URL format',
+                    error: 'Please provide a valid HTTP or HTTPS URL'
+                } as SourceUploadResponse);
+                return;
+            }
+
+            // Get page title
+            logger.info(`Getting page title for ${url}...`);
+            const pageTitle = await SourceService.getUrlTitle(url);
+
+            // Extract text from the URL
+            logger.info(`Extracting text from ${url}...`);
+            const extractedText = await SourceService.extractText(url, 'url');
+            logger.info(`Extracted ${extractedText.length} characters from URL`);
+
+            // Create source metadata
+            const sourceData: SourceMetadata = {
+                id: uuidv4(),
+                filename: pageTitle || validUrl.hostname,
+                originalName: pageTitle || validUrl.hostname,
+                fileType: 'url',
+                fileSize: 0,
+                filePath: '',
+                sourceUrl: url,
+                extractedText: extractedText,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            // Save to Supabase
+            const { data, error } = await supabase
+                .from('sources')
+                .insert([{
+                    id: sourceData.id,
+                    filename: sourceData.filename,
+                    original_name: sourceData.originalName,
+                    file_type: sourceData.fileType,
+                    file_size: sourceData.fileSize,
+                    file_path: sourceData.filePath,
+                    source_url: sourceData.sourceUrl,
+                    extracted_text: sourceData.extractedText,
+                    created_at: sourceData.createdAt,
+                    updated_at: sourceData.updatedAt
+                }])
+                .select()
+                .single();
+
+            if (error) {
+                logger.error(`Error saving source to database: ${error.message}`);
+                res.status(500).json({
+                    success: false,
+                    message: 'Failed to save source to database',
+                    error: error.message
+                } as SourceUploadResponse);
+                return;
+            }
+
+            logger.info(`Source saved successfully: ${sourceData.id}`);
+
+            // Process source: chunk and generate embeddings
+            try {
+                logger.info('Generating embeddings...');
+                const embeddingService = new EmbeddingService();
+                const chunksWithEmbeddings = await embeddingService.processSource(extractedText);
+                
+                logger.info(`Generated ${chunksWithEmbeddings.length} chunks with embeddings`);
+
+                // Save chunks and embeddings to database
+                const chunkInserts = chunksWithEmbeddings.map(({ chunk, embedding }) => ({
+                    source_id: sourceData.id,
+                    chunk_text: chunk.text,
+                    chunk_index: chunk.index,
+                    embedding: embedding
+                }));
+
+                const { error: chunkError } = await supabase
+                    .from('source_chunks')
+                    .insert(chunkInserts);
+
+                if (chunkError) {
+                    logger.error(`Error saving embeddings: ${chunkError}`);
+                } else {
+                    logger.info('Embeddings saved successfully');
+                }
+            } catch (embeddingError: any) {
+                logger.error(`Error generating embeddings: ${embeddingError}`);
+            }
+
+            res.status(201).json({
+                success: true,
+                message: 'Source uploaded and processed successfully',
+                source: {
+                    id: sourceData.id,
+                    filename: sourceData.filename,
+                    originalName: sourceData.originalName,
+                    fileType: sourceData.fileType,
+                    fileSize: sourceData.fileSize,
+                    filePath: sourceData.filePath,
+                    sourceUrl: sourceData.sourceUrl,
+                    createdAt: sourceData.createdAt,
+                    updatedAt: sourceData.updatedAt
+                }
+            } as SourceUploadResponse);
+
+        } catch (error: any) {
+            logger.error(`Error uploading URL source: ${error.message}`);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to process URL source',
+                error: error.message
+            } as SourceUploadResponse);
         }
     }
 }

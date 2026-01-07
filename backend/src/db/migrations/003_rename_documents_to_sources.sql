@@ -33,6 +33,8 @@ CREATE INDEX IF NOT EXISTS idx_sources_file_type ON sources(file_type);
 ALTER TABLE sources ADD COLUMN IF NOT EXISTS source_url TEXT;
 
 -- Drop old constraint and create new one with 'url' type
+-- Drop both old and new constraint names in case either exists
+ALTER TABLE sources DROP CONSTRAINT IF EXISTS documents_file_type_check;
 ALTER TABLE sources DROP CONSTRAINT IF EXISTS sources_file_type_check;
 ALTER TABLE sources ADD CONSTRAINT sources_file_type_check 
     CHECK (file_type IN ('pdf', 'docx', 'doc', 'txt', 'url'));

@@ -108,7 +108,7 @@ export async function streamChatGraphWithWebSocket(
                         loadingMessage = 'Looking for cues...';
                         break;
                     case 'retrieval':
-                        loadingMessage = 'Reviewing document...';
+                        loadingMessage = 'Reviewing sources...';
                         break;
                     case 'generator':
                         loadingMessage = 'Generating response...';
