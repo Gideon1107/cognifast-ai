@@ -4,6 +4,10 @@
 
 Cognifast is an intelligent learning platform that helps users learn faster and evaluate their knowledge through AI-powered document analysis, interactive chat, and automated quiz generation.
 
+
+https://github.com/user-attachments/assets/8f046bff-4917-4d31-80a5-9722d1843294
+
+
 ## 🎯 Overview
 
 Cognifast transforms traditional learning by allowing users to upload documents and interact with an AI system that:
