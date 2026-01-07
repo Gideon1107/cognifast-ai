@@ -117,8 +117,8 @@ export class GeneratorAgent {
             content: content,
             sources: state.retrievedChunks.map((chunk) => ({
                 chunkId: chunk.id,
-                documentId: chunk.documentId,
-                documentName: chunk.documentName,
+                sourceId: chunk.sourceId,
+                sourceName: chunk.sourceName,
                 chunkText: chunk.chunkText,
                 chunkIndex: chunk.chunkIndex,
                 similarity: chunk.similarity,
@@ -160,8 +160,8 @@ export class GeneratorAgent {
             content: content,
             sources: state.retrievedChunks.map((chunk) => ({
                 chunkId: chunk.id,
-                documentId: chunk.documentId,
-                documentName: chunk.documentName,
+                sourceId: chunk.sourceId,
+                sourceName: chunk.sourceName,
                 chunkText: chunk.chunkText,
                 chunkIndex: chunk.chunkIndex,
                 similarity: chunk.similarity,
@@ -190,9 +190,10 @@ export class GeneratorAgent {
      * Build RAG prompt with retrieved context
      */
     private buildRAGPrompt(state: ConversationState): string {
-        // Build context from retrieved chunks with document names
+        // Build context from retrieved chunks with numbered citations
+        // Citation numbers match array index + 1: [1] = chunks[0], [2] = chunks[1], etc.
         const context = state.retrievedChunks
-            .map((chunk, idx) => `[Source ${idx + 1} - ${chunk.documentName}]:\n${chunk.chunkText}`)
+            .map((chunk, idx) => `[${idx + 1}]\n${chunk.chunkText}`)
             .join("\n\n");
 
         // Build conversation history
@@ -201,18 +202,18 @@ export class GeneratorAgent {
             .map((m) => `${m.role}: ${m.content}`)
             .join("\n");
 
-        // Determine if we're working with multiple documents
-        const uniqueDocs = new Set(state.retrievedChunks.map(c => c.documentName));
-        const isMultiDoc = uniqueDocs.size > 1;
+        // Determine if we're working with multiple sources
+        const uniqueSources = new Set(state.retrievedChunks.map(c => c.sourceName));
+        const isMultiSource = uniqueSources.size > 1;
 
-        const docReference = isMultiDoc ? 'documents' : 'document';
-        const docPlural = isMultiDoc ? 's' : '';
-        const notMentionPhrasing = isMultiDoc ? "documents don't" : "document doesn't";
-        const multiDocInstruction = isMultiDoc ? '\n5. When synthesizing information from multiple documents, attribute each piece to its source naturally' : '';
+        const sourceReference = isMultiSource ? 'sources' : 'source';
+        const sourcePlural = isMultiSource ? 's' : '';
+        const notMentionPhrasing = isMultiSource ? "sources don't" : "source doesn't";
+        const multiSourceInstruction = isMultiSource ? '\n5. When synthesizing information from multiple sources, attribute each piece to its source naturally' : '';
         
-        return `You are a helpful AI assistant with access to ${isMultiDoc ? 'multiple documents' : 'a document'}. Answer the user's question naturally and conversationally.
+        return `You are a helpful AI assistant with access to ${isMultiSource ? 'multiple sources' : 'a source'}. Answer the user's question naturally and conversationally.
 
-Available Information from Document${docPlural}:
+Available Information from Source${sourcePlural}:
 ${context || "No information available"}
 
 Conversation History:
@@ -221,11 +222,15 @@ ${conversationHistory || "No previous messages"}
 User Question: ${state.currentQuery}
 
 Instructions:
-1. Answer naturally as if you've read the ${docReference} yourself
+1. Answer naturally as if you've read the ${sourceReference} yourself
 2. DO NOT mention "context", "provided context", or "the context shows" - speak as if you have direct knowledge
-3. ALWAYS cite the document source when providing information - use the format [Source 1 - DocumentName.pdf] or mention "According to DocumentName.pdf" or "In DocumentName.pdf"
-4. DO NOT say generic things like "This information is detailed in the document" or "as mentioned in various sections" - use SPECIFIC source citations with document names
-5. If you don't have the information to answer, say: "I don't see that information in the ${docReference}" or "The ${notMentionPhrasing} mention that"${multiDocInstruction}
+3. ALWAYS cite sources using numbered citations [1], [2], [3], etc. when referencing information from the sources
+4. Citation numbers correspond to the numbered chunks in the context above ([1] = first chunk, [2] = second chunk, etc.)
+5. CRITICAL: ONLY use citation numbers that exist in the context above. If the context shows [1], [2], [3], you can ONLY cite [1], [2], or [3]. DO NOT create citations like [4], [5], etc. if they don't exist in the context.
+6. Place citations immediately after the information being cited, like: "This process occurs [1] within the chloroplasts..."
+7. DO NOT include source names in citations - just use the number: [1], not [Source 1 - Name]
+8. DO NOT say generic things like "This information is detailed in the source" or "as mentioned in various sections" - use SPECIFIC numbered citations
+9. If you don't have the information to answer, say: "I don't see that information in the ${sourceReference}" or "The ${notMentionPhrasing} mention that"${multiSourceInstruction}
 6. Be conversational, helpful, and concise
 7. DO NOT end with generic phrases like "feel free to ask", "let me know if", or "if you have more questions" - just answer the question and stop naturally
 8. DO NOT end with similar generic phrases like "feel free to ask", "let me know if", "if there's any more information you need", "if you have any other questions", etc.
@@ -241,20 +246,21 @@ Formatting Requirements:
 - Use consistent citation format throughout
 - Make the response easy to scan and read
 
-Example of GOOD formatting:
+Example of GOOD formatting with ${state.retrievedChunks.length} chunk(s) available:
 "Several factors can disturb photosynthesis, impacting its efficiency. Key ones include:
 
-1. **Light Intensity**: Insufficient light can reduce the rate of photosynthesis, as plants rely on light energy to drive the process. Conversely, too much light can also be harmful, leading to damage in chloroplasts [Source 3 - Photosynthesis.pdf].
+1. **Light Intensity**: Insufficient light can reduce the rate of photosynthesis, as plants rely on light energy to drive the process ${state.retrievedChunks.length >= 1 ? '[1]' : ''}.
 
-2. **Carbon Dioxide Concentration**: A low concentration of carbon dioxide can limit the rate of photosynthesis since it's one of the essential reactants in the process. Variations in carbon dioxide levels can occur due to environmental changes or the availability of resources [Source 3 - Photosynthesis.pdf].
+2. **Carbon Dioxide Concentration**: A low concentration of carbon dioxide can limit the rate of photosynthesis since it's one of the essential reactants in the process ${state.retrievedChunks.length >= 1 ? '[1]' : ''}."
 
-3. **Temperature**: Photosynthesis is temperature-sensitive. Extreme temperatures can denature enzymes involved in the process, either slowing it down or stopping it altogether [Source 1 - Photosynthesis.pdf]."
+REMEMBER: You have ${state.retrievedChunks.length} chunk(s) in the context, so you can ONLY cite ${state.retrievedChunks.map((_, i) => `[${i + 1}]`).join(', ')}. DO NOT use any other citation numbers.
 
 Example of GOOD citation:
-"He worked on DevConnect, a web chat application [Source 1 - Resume.pdf]. According to [Source 2 - Portfolio.pdf], he also built Footnation."
+"He worked on DevConnect, a web chat application [1]."
 
 Example of BAD citation:
 "He worked on several projects. This information is detailed in the document."
+"He worked on DevConnect [1] and also built Footnation [2]." ← BAD if you only have 1 chunk!
 
 Answer:`;
     }

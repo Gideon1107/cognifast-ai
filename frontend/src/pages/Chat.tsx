@@ -7,7 +7,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Navbar } from '../components/Navbar';
-import { DocumentUploadModal } from '../components/chat/DocumentUploadModal';
+import { SourceUploadModal } from '../components/chat/SourceUploadModal';
+import { CitationTooltip } from '../components/chat/CitationTooltip';
 import { FileText, Send, Sparkles, BookOpen, ClipboardList, BarChart } from 'lucide-react';
 import { 
   getConversation, 
@@ -16,7 +17,7 @@ import {
 import { useChatStore } from '../store';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { renderWithLatex } from '../utils/latex';
-import type { Message } from '@shared/types';
+import type { Message, MessageSource } from '@shared/types';
 
 export function Chat() {
   const { conversationId } = useParams<{ conversationId?: string }>();
@@ -24,6 +25,7 @@ export function Chat() {
   const navigate = useNavigate();
   const [message, setMessage] = useState('');
   const [uploadInProgress, setUploadInProgress] = useState(false);
+  const [openCitation, setOpenCitation] = useState<{ source: MessageSource; position: { x: number; y: number } } | null>(null);
 
   // Zustand store
   const {
@@ -113,15 +115,15 @@ export function Chat() {
     { id: 'quiz', name: 'Quiz', icon: ClipboardList },
   ];
 
-  const handleStartClassroom = async (documentIds: string[], title: string) => {
-    if (documentIds.length === 0) return;
+  const handleStartClassroom = async (sourceIds: string[], title: string) => {
+    if (sourceIds.length === 0) return;
 
     setUploadInProgress(true);
 
     try {
-      // Start conversation with uploaded documents and title
+      // Start conversation with uploaded sources and title
       const response = await startConversation({
-        documentIds,
+        sourceIds,
         title,
       });
 
@@ -171,10 +173,134 @@ export function Chat() {
     }
   };
 
+  // Parse citations from text and return parts (text segments and citations)
+  const parseCitations = (text: string, sources: MessageSource[] | undefined): Array<{ type: 'text' | 'citation'; content: string; citationNumber?: number; source?: MessageSource }> => {
+    if (!sources || sources.length === 0) {
+      return [{ type: 'text', content: text }];
+    }
+
+    const citationRegex = /\[(\d+)\]/g;
+    const parts: Array<{ type: 'text' | 'citation'; content: string; citationNumber?: number; source?: MessageSource }> = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = citationRegex.exec(text)) !== null) {
+      // Add text before citation
+      if (match.index > lastIndex) {
+        parts.push({ type: 'text', content: text.substring(lastIndex, match.index) });
+      }
+
+      // Add citation
+      const citationNumber = parseInt(match[1], 10);
+      const sourceIndex = citationNumber - 1; // [1] -> sources[0], [2] -> sources[1], etc.
+      
+      if (sourceIndex >= 0 && sourceIndex < sources.length) {
+        const source = sources[sourceIndex];
+        // Validate that source has required data
+        if (source && source.chunkText && source.chunkText.trim().length > 0) {
+          parts.push({
+            type: 'citation',
+            content: match[0],
+            citationNumber,
+            source: source,
+          });
+        } else {
+          // Treat as text if no chunk text
+          parts.push({ type: 'text', content: match[0] });
+        }
+      } else {
+        // Invalid citation number, treat as text
+        parts.push({ type: 'text', content: match[0] });
+      }
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push({ type: 'text', content: text.substring(lastIndex) });
+    }
+
+    return parts.length > 0 ? parts : [{ type: 'text', content: text }];
+  };
+
+  // Handle citation hover with delay for smooth transition
+  const citationTimeoutRef = useRef<number | null>(null);
+  const citationShowTimeoutRef = useRef<number | null>(null);
+
+  const handleCitationHover = (e: React.MouseEvent<HTMLSpanElement>, source: MessageSource) => {
+    // Validate source has chunk text
+    if (!source || !source.chunkText || source.chunkText.trim().length === 0) {
+      return;
+    }
+
+    // Clear any existing timeouts
+    if (citationTimeoutRef.current) {
+      clearTimeout(citationTimeoutRef.current);
+      citationTimeoutRef.current = null;
+    }
+    if (citationShowTimeoutRef.current) {
+      clearTimeout(citationShowTimeoutRef.current);
+      citationShowTimeoutRef.current = null;
+    }
+
+    // Capture rect immediately (before setTimeout) as e.currentTarget becomes null in async callback
+    const rect = e.currentTarget.getBoundingClientRect();
+
+    // Add a slight delay before showing tooltip for smooth transition
+    citationShowTimeoutRef.current = window.setTimeout(() => {
+      setOpenCitation({
+        source,
+        position: {
+          x: rect.left,
+          y: rect.top + rect.height + 8, // Position below the citation
+        },
+      });
+      citationShowTimeoutRef.current = null;
+    }, 150); // 150ms delay before showing (reduced for better responsiveness)
+  };
+
+  const handleCitationLeave = () => {
+    // Clear show timeout if leaving before tooltip appears
+    if (citationShowTimeoutRef.current) {
+      clearTimeout(citationShowTimeoutRef.current);
+      citationShowTimeoutRef.current = null;
+    }
+
+    // Add a delay before closing to allow moving to tooltip
+    citationTimeoutRef.current = window.setTimeout(() => {
+      setOpenCitation(null);
+    }, 200);
+  };
+
+  const handleTooltipEnter = () => {
+    // Clear timeout if hovering over tooltip
+    if (citationTimeoutRef.current) {
+      clearTimeout(citationTimeoutRef.current);
+    }
+  };
+
+  const handleTooltipLeave = () => {
+    // Close immediately when leaving tooltip
+    setOpenCitation(null);
+  };
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (citationTimeoutRef.current) {
+        clearTimeout(citationTimeoutRef.current);
+      }
+      if (citationShowTimeoutRef.current) {
+        clearTimeout(citationShowTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Get sources from conversation
-  const sources = conversation?.documentIds.map((docId, index) => ({
-    id: docId,
-    name: conversation.documentNames?.[index] || `Document ${index + 1}`,
+  const sources = conversation?.sourceIds.map((sourceId, index) => ({
+    id: sourceId,
+    name: conversation.sourceNames?.[index] || `Source ${index + 1}`,
     selected: true,
   })) || [];
 
@@ -197,8 +323,8 @@ export function Chat() {
     <div className="h-screen flex flex-col bg-gray-50" style={{ overflow: 'hidden', position: 'relative' }}>
       <Navbar />
 
-      {/* Document Upload Modal */}
-      <DocumentUploadModal
+      {/* Source Upload Modal */}
+      <SourceUploadModal
         isOpen={showUploadModal}
         onClose={() => {
           // Only navigate back if user manually closes modal (not after successful upload)
@@ -305,104 +431,97 @@ export function Chat() {
                         </div>
                       ) : (
                         <div className="space-y-3" style={{ maxWidth: '100%', overflow: 'hidden', minWidth: 0 }}>
-                          <div className="prose prose-sm max-w-none text-gray-900 leading-relaxed" style={{ maxWidth: '100%', overflowWrap: 'break-word', overflow: 'hidden', minWidth: 0 }}>
+                          <div className="prose prose-sm max-w-none text-gray-900 leading-relaxed whitespace-pre-wrap" style={{ maxWidth: '100%', overflowWrap: 'break-word', overflow: 'hidden', minWidth: 0 }}>
                             {(() => {
+                              // Parse citations first
+                              const parts = parseCitations(msg.content, msg.sources);
+
                               // Convert **text** to bold
                               const formatBold = (text: string) => {
                                 return text.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
                               };
 
                               // Convert markdown headings to HTML headings
-                              // Handles ### Heading 3, ## Heading 2, # Heading 1
                               const formatHeadings = (text: string) => {
-                                // Process from largest to smallest to avoid conflicts
-                                // ### Heading 3
                                 text = text.replace(/^###\s+(.+)$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>');
-                                // ## Heading 2
                                 text = text.replace(/^##\s+(.+)$/gm, '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>');
-                                // # Heading 1
                                 text = text.replace(/^#\s+(.+)$/gm, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>');
                                 return text;
                               };
 
-                              // Check if content has LaTeX
-                              const hasLatex = /\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)|\\\(([^)]+?)\\\)/.test(msg.content);
-                              
-                              if (hasLatex) {
-                                // Process with LaTeX support
-                                const latexParts = renderWithLatex(msg.content);
-                                
-                                // Render parts with formatting
-                                return latexParts.map((part, partIdx) => {
-                                  if (typeof part === 'string') {
-                                    // Process headings first, then split by newlines
-                                    const withHeadings = formatHeadings(part);
-                                    // Split by newlines for line-by-line processing
-                                    return withHeadings.split('\n').map((line, lineIdx) => {
-                                      // Check for headings (already formatted as HTML)
-                                      if (line.includes('<h1') || line.includes('<h2') || line.includes('<h3')) {
-                                        return (
-                                          <div key={`${partIdx}-${lineIdx}`} dangerouslySetInnerHTML={{ __html: formatBold(line) }} />
-                                        );
-                                      }
-                                      const listMatch = line.match(/^(\d+\.\s+)(.+)$/);
-                                      if (listMatch) {
-                                        return (
-                                          <div key={`${partIdx}-${lineIdx}`} className="mb-2">
-                                            <span className="font-semibold">{listMatch[1]}</span>
-                                            <span dangerouslySetInnerHTML={{ __html: formatBold(listMatch[2]) }} />
-                                          </div>
-                                        );
-                                      }
-                                      if (line.trim()) {
-                                        return (
-                                          <p key={`${partIdx}-${lineIdx}`} className="mb-2" dangerouslySetInnerHTML={{ __html: formatBold(line) }} />
-                                        );
-                                      }
-                                      return <br key={`${partIdx}-${lineIdx}`} />;
-                                    });
+                              // Group consecutive text parts and render with citations inline
+                              const renderParts = (): React.ReactElement[] => {
+                                const elements: React.ReactElement[] = [];
+                                let currentTextGroup: string[] = [];
+                                let currentTextIndices: number[] = [];
+
+                                const flushTextGroup = () => {
+                                  if (currentTextGroup.length > 0) {
+                                    const combinedText = currentTextGroup.join('');
+                                    const hasLatex = /\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)|\\\(([^)]+?)\\\)/.test(combinedText);
+                                    const withHeadings = formatHeadings(combinedText);
+                                    
+                                    if (hasLatex) {
+                                      const latexParts = renderWithLatex(combinedText);
+                                      latexParts.forEach((lp, idx) => {
+                                        if (typeof lp === 'string') {
+                                          elements.push(
+                                            <span 
+                                              key={`text-group-${currentTextIndices[0]}-latex-${idx}`} 
+                                              dangerouslySetInnerHTML={{ __html: formatBold(lp) }} 
+                                            />
+                                          );
+                                        } else {
+                                          elements.push(<span key={`text-group-${currentTextIndices[0]}-latex-${idx}`}>{lp}</span>);
+                                        }
+                                      });
+                                    } else {
+                                      elements.push(
+                                        <span 
+                                          key={`text-group-${currentTextIndices[0]}`} 
+                                          dangerouslySetInnerHTML={{ __html: formatBold(withHeadings) }} 
+                                        />
+                                      );
+                                    }
+                                    currentTextGroup = [];
+                                    currentTextIndices = [];
                                   }
-                                  // LaTeX element (ReactElement)
-                                  return part;
+                                };
+
+                                parts.forEach((part, partIdx) => {
+                                  if (part.type === 'citation' && part.source) {
+                                    flushTextGroup();
+                                    // Render citation as rounded box with smooth hover
+                                    elements.push(
+                                      <span
+                                        key={`citation-${partIdx}`}
+                                        onMouseEnter={(e) => handleCitationHover(e, part.source!)}
+                                        onMouseLeave={handleCitationLeave}
+                                        className="inline-flex items-center justify-center px-1.5 py-0.5 mx-0.5 text-[11px] font-medium text-blue-700 bg-blue-100 rounded border border-blue-200 hover:bg-blue-200 transition-all duration-200 cursor-pointer"
+                                        style={{ 
+                                          display: 'inline-flex', 
+                                          verticalAlign: 'baseline',
+                                          minWidth: '20px',
+                                          height: '18px'
+                                        }}
+                                        title={`Hover to view source: ${part.source.sourceName}`}
+                                      >
+                                        {part.citationNumber}
+                                      </span>
+                                    );
+                                  } else {
+                                    currentTextGroup.push(part.content);
+                                    currentTextIndices.push(partIdx);
+                                  }
                                 });
-                              } else {
-                                // Process headings first, then split by newlines
-                                const withHeadings = formatHeadings(msg.content);
-                                // Original markdown rendering if no LaTeX
-                                return withHeadings.split('\n').map((line, idx) => {
-                                  // Check for headings (already formatted as HTML)
-                                  if (line.includes('<h1') || line.includes('<h2') || line.includes('<h3')) {
-                                    return (
-                                      <div key={idx} dangerouslySetInnerHTML={{ __html: formatBold(line) }} />
-                                    );
-                                  }
-                                  const listMatch = line.match(/^(\d+\.\s+)(.+)$/);
-                                  if (listMatch) {
-                                    const listContent = formatBold(listMatch[2]);
-                                    return (
-                                      <div key={idx} className="mb-2">
-                                        <span className="font-semibold">{listMatch[1]}</span>
-                                        <span dangerouslySetInnerHTML={{ __html: listContent }} />
-                                      </div>
-                                    );
-                                  }
-                                  if (line.trim()) {
-                                    const formattedLine = formatBold(line);
-                                    return (
-                                      <p key={idx} className="mb-2" dangerouslySetInnerHTML={{ __html: formattedLine }} />
-                                    );
-                                  }
-                                  return <br key={idx} />;
-                                });
-                              }
+
+                                flushTextGroup();
+                                return elements;
+                              };
+
+                              return renderParts();
                             })()}
                           </div>
-                          {msg.sources && Array.isArray(msg.sources) && msg.sources.length > 0 && (
-                            <div className="flex items-center gap-2 text-xs text-gray-600">
-                              <FileText className="w-3 h-3" />
-                              <span>Sources: {msg.sources.map(s => s.documentName).join(', ')}</span>
-                            </div>
-                          )}
                           <div className="flex items-center gap-2">
                             <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
                               <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -522,6 +641,20 @@ export function Chat() {
           </div>
         </div>
       </div>
+
+      {/* Citation Tooltip */}
+      {openCitation && (
+        <div
+          onMouseEnter={handleTooltipEnter}
+          onMouseLeave={handleTooltipLeave}
+        >
+          <CitationTooltip
+            source={openCitation.source}
+            isOpen={true}
+            position={openCitation.position}
+          />
+        </div>
+      )}
     </div>
   );
 }

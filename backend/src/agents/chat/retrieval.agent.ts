@@ -1,5 +1,5 @@
 /**
- * Retrieval Agent - Retrieves relevant document chunks using vector search
+ * Retrieval Agent - Retrieves relevant source chunks using vector search
  */
 
 import { ConversationState } from '../../types/chat.types';
@@ -20,15 +20,21 @@ export class RetrievalAgent {
      */
     async execute(state: ConversationState): Promise<Partial<ConversationState>> {
         const startTime = Date.now();
-        logger.info(`Retrieving chunks for: "${state.currentQuery}" from ${state.documentIds.length} document(s) in current conversation`);
+        logger.info(`Retrieving chunks for: "${state.currentQuery}" from ${state.sourceIds.length} source(s) in current conversation`);
 
         try {
-            // Use retrieval service to find relevant chunks from the current conversation's documents
+            // Use retrieval service to find relevant chunks from the current conversation's sources
+            // Request more chunks to account for filtering (page markers, etc.)
             const retrievedChunks = await this.retrievalService.retrieveRelevantChunks(
                 state.currentQuery,
-                state.documentIds, // Pass array of document IDs from current conversation
+                state.sourceIds, // Pass array of source IDs from current conversation
                 5 // Top 5 chunks
             );
+            
+            // Warn if we got fewer chunks than expected
+            if (retrievedChunks.length < 3) {
+                logger.warn(`⚠️ Only ${retrievedChunks.length} chunks retrieved. Consider re-uploading documents to remove page markers.`);
+            }
 
             
             const endTime = Date.now();
@@ -39,13 +45,13 @@ export class RetrievalAgent {
             } else {
                 logger.info(`Retrieved ${retrievedChunks.length} chunks`);
                 
-                // Log document distribution
-                const docCounts = new Map<string, number>();
+                // Log source distribution
+                const sourceCounts = new Map<string, number>();
                 retrievedChunks.forEach(chunk => {
-                    const count = docCounts.get(chunk.documentName) || 0;
-                    docCounts.set(chunk.documentName, count + 1);
+                    const count = sourceCounts.get(chunk.sourceName) || 0;
+                    sourceCounts.set(chunk.sourceName, count + 1);
                 });
-                logger.info(`Chunks by document:`, Object.fromEntries(docCounts));
+                logger.info(`Chunks by source:`, Object.fromEntries(sourceCounts));
                 
                 logger.info(`Average similarity: ${
                     (retrievedChunks.reduce((sum, c) => sum + c.similarity, 0) / retrievedChunks.length * 100).toFixed(1)

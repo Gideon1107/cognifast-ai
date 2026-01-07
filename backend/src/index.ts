@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import helmet from 'helmet';
 import cors from 'cors';
 import { checkDatabaseConnection } from './db/dbConnection';
-import documentRoutes from './routes/document.routes';
+import sourceRoutes from './routes/source.routes';
 import chatRoutes from './routes/chat.routes';
 import { setupChatSocket } from './sockets/chat.socket';
 import { createLogger } from './utils/logger';
@@ -31,7 +31,7 @@ app.get('/', (req, res) => {
 });
 
 // API routes
-app.use('/api/documents', documentRoutes);
+app.use('/api/sources', sourceRoutes);
 app.use('/api/chat', chatRoutes);
 
 // Create HTTP server and Socket.io server
@@ -52,7 +52,7 @@ httpServer.listen(PORT, async () => {
     logger.info('Checking database connection...');
     await checkDatabaseConnection();
     logger.info('API endpoints available:');
-    logger.info(`   Documents: http://localhost:${PORT}/api/documents`);
+    logger.info(`   Sources:   http://localhost:${PORT}/api/sources`);
     logger.info(`   Chat:      http://localhost:${PORT}/api/chat`);
     logger.info(`   WebSocket: ws://localhost:${PORT}`);
 });

@@ -32,7 +32,7 @@ const logger = createLogger('CHAT-GRAPH');
 // Define the state annotation
 const StateAnnotation = Annotation.Root({
     conversationId: Annotation<string>,
-    documentIds: Annotation<string[]>,
+    sourceIds: Annotation<string[]>,
     messages: Annotation<Message[]>,
     currentQuery: Annotation<string>,
     retrievedChunks: Annotation<RetrievedChunk[]>,
@@ -123,7 +123,7 @@ export async function executeChatGraph(initialState: ConversationState): Promise
     try {
         logger.info('Chat Graph Execution Started');
         logger.info(`Conversation ID: ${initialState.conversationId}`);
-        logger.info(`Document IDs: [${initialState.documentIds.join(', ')}]`);
+        logger.info(`Source IDs: [${initialState.sourceIds.join(', ')}]`);
         logger.info(`Query: ${initialState.currentQuery}`);
         
         const startTime = Date.now();

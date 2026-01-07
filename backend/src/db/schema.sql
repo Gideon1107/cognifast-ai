@@ -1,23 +1,25 @@
--- Create documents table
+-- Create sources table
+-- Supports both file uploads (pdf, docx, doc, txt) and web page URLs
 
-CREATE TABLE IF NOT EXISTS documents (
+CREATE TABLE IF NOT EXISTS sources (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     filename VARCHAR(255) NOT NULL,
     original_name VARCHAR(255) NOT NULL,
-    file_type VARCHAR(10) NOT NULL CHECK (file_type IN ('pdf', 'docx', 'doc', 'txt')),
+    file_type VARCHAR(10) NOT NULL CHECK (file_type IN ('pdf', 'docx', 'doc', 'txt', 'url')),
     file_size BIGINT NOT NULL,
     file_path TEXT NOT NULL,
+    source_url TEXT, -- Original URL for web page sources
     extracted_text TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Create index for faster queries
-CREATE INDEX IF NOT EXISTS idx_documents_created_at ON documents(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_documents_file_type ON documents(file_type);
+CREATE INDEX IF NOT EXISTS idx_sources_created_at ON sources(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sources_file_type ON sources(file_type);
 
 -- Enable Row Level Security (optional, for later when adding auth)
--- ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE sources ENABLE ROW LEVEL SECURITY;
 
 -- Create a function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -29,9 +31,9 @@ END;
 $$ language 'plpgsql';
 
 -- Create trigger to automatically update updated_at
-DROP TRIGGER IF EXISTS update_documents_updated_at ON documents;
-CREATE TRIGGER update_documents_updated_at 
-    BEFORE UPDATE ON documents 
+DROP TRIGGER IF EXISTS update_sources_updated_at ON sources;
+CREATE TRIGGER update_sources_updated_at 
+    BEFORE UPDATE ON sources 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
@@ -42,29 +44,29 @@ CREATE TRIGGER update_documents_updated_at
 -- Enable pgvector extension for vector similarity search
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- Create document_chunks table for storing text chunks with embeddings
-CREATE TABLE IF NOT EXISTS document_chunks (
+-- Create source_chunks table for storing text chunks with embeddings
+CREATE TABLE IF NOT EXISTS source_chunks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    source_id UUID NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
     chunk_text TEXT NOT NULL,
     chunk_index INTEGER NOT NULL,
     embedding vector(1536), -- OpenAI text-embedding-3-small uses 1536 dimensions
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(document_id, chunk_index)
+    UNIQUE(source_id, chunk_index)
 );
 
 -- Create index for vector similarity search (cosine distance)
-CREATE INDEX IF NOT EXISTS idx_document_chunks_embedding 
-    ON document_chunks USING ivfflat (embedding vector_cosine_ops)
+CREATE INDEX IF NOT EXISTS idx_source_chunks_embedding 
+    ON source_chunks USING ivfflat (embedding vector_cosine_ops)
     WITH (lists = 100);
 
--- Create index for document_id lookups
-CREATE INDEX IF NOT EXISTS idx_document_chunks_document_id 
-    ON document_chunks(document_id);
+-- Create index for source_id lookups
+CREATE INDEX IF NOT EXISTS idx_source_chunks_source_id 
+    ON source_chunks(source_id);
 
 -- Create index for faster chunk retrieval
-CREATE INDEX IF NOT EXISTS idx_document_chunks_document_chunk 
-    ON document_chunks(document_id, chunk_index);
+CREATE INDEX IF NOT EXISTS idx_source_chunks_source_chunk 
+    ON source_chunks(source_id, chunk_index);
 
 -- ============================================
 -- CHAT FEATURE TABLES
@@ -78,20 +80,20 @@ CREATE TABLE IF NOT EXISTS conversations (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Conversation-Document junction table (many-to-many relationship)
--- Enables conversations to have multiple documents as context
-CREATE TABLE IF NOT EXISTS conversation_documents (
+-- Conversation-Source junction table (many-to-many relationship)
+-- Enables conversations to have multiple sources as context
+CREATE TABLE IF NOT EXISTS conversation_sources (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-    document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    source_id UUID NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(conversation_id, document_id)
+    UNIQUE(conversation_id, source_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_conversation_documents_conversation 
-    ON conversation_documents(conversation_id);
-CREATE INDEX IF NOT EXISTS idx_conversation_documents_document 
-    ON conversation_documents(document_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_sources_conversation 
+    ON conversation_sources(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_sources_source 
+    ON conversation_sources(source_id);
 
 -- Messages table for chat history
 CREATE TABLE IF NOT EXISTS messages (
@@ -117,7 +119,7 @@ CREATE TRIGGER update_conversations_updated_at
 -- Quizzes table
 CREATE TABLE IF NOT EXISTS quizzes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
+    source_id UUID REFERENCES sources(id) ON DELETE CASCADE,
     difficulty TEXT CHECK (difficulty IN ('easy', 'medium', 'hard')),
     questions JSONB NOT NULL, -- Array of question objects with answers
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -138,14 +140,14 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
 -- SUMMARY FEATURE TABLE
 -- ============================================
 
--- Document summaries table
-CREATE TABLE IF NOT EXISTS document_summaries (
+-- Source summaries table
+CREATE TABLE IF NOT EXISTS source_summaries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
+    source_id UUID REFERENCES sources(id) ON DELETE CASCADE,
     summary TEXT NOT NULL,
     key_points JSONB, -- Array of key points with categories
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(document_id) -- One summary per document
+    UNIQUE(source_id) -- One summary per source
 );
 
 -- ============================================
@@ -160,7 +162,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
 
 -- Quizzes indexes
-CREATE INDEX IF NOT EXISTS idx_quizzes_document_id ON quizzes(document_id);
+CREATE INDEX IF NOT EXISTS idx_quizzes_source_id ON quizzes(source_id);
 CREATE INDEX IF NOT EXISTS idx_quizzes_difficulty ON quizzes(difficulty);
 CREATE INDEX IF NOT EXISTS idx_quizzes_created_at ON quizzes(created_at DESC);
 
@@ -169,5 +171,5 @@ CREATE INDEX IF NOT EXISTS idx_quiz_attempts_quiz_id ON quiz_attempts(quiz_id);
 CREATE INDEX IF NOT EXISTS idx_quiz_attempts_status ON quiz_attempts(status);
 CREATE INDEX IF NOT EXISTS idx_quiz_attempts_created_at ON quiz_attempts(created_at DESC);
 
--- Document summaries indexes
-CREATE INDEX IF NOT EXISTS idx_document_summaries_document_id ON document_summaries(document_id);
+-- Source summaries indexes
+CREATE INDEX IF NOT EXISTS idx_source_summaries_source_id ON source_summaries(source_id);

@@ -9,7 +9,7 @@ export type {
     Message,
     MessageSource,
     Conversation,
-    DocumentMetadata
+    SourceMetadata
 } from './entities';
 
 // API types
@@ -24,9 +24,10 @@ export type {
     DeleteConversationResponse,
     UpdateConversationRequest,
     UpdateConversationResponse,
-    // Document API
-    DocumentUploadResponse,
-    GetDocumentsResponse,
-    GetDocumentResponse
+    // Source API
+    UploadUrlRequest,
+    SourceUploadResponse,
+    GetSourcesResponse,
+    GetSourceResponse
 } from './api';
 

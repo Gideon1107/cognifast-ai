@@ -54,7 +54,7 @@ export async function streamChatGraphWithWebSocket(
         const isFirstMessage = existingMessages.length === 0;
         const initialState: ConversationState = {
             conversationId,
-            documentIds: conversation.documentIds,
+            sourceIds: conversation.sourceIds,
             messages: [...existingMessages, userMessage],
             currentQuery: message,
             retrievedChunks: [],

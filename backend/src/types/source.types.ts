@@ -1,6 +1,6 @@
 // Import shared types (used by frontend too)
 export type {
-    DocumentMetadata,
-    DocumentUploadResponse
+    SourceMetadata,
+    SourceUploadResponse
 } from '@shared/types';
 

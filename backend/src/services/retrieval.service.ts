@@ -9,8 +9,8 @@ const logger = createLogger('RETRIEVAL-SERVICE');
  */
 export interface RetrievedChunk {
     id: string;
-    documentId: string;
-    documentName: string; // Name of the document
+    sourceId: string; 
+    sourceName: string;
     chunkText: string;
     chunkIndex: number;
     similarity: number; // 0-1, higher is more similar
@@ -30,19 +30,19 @@ export class RetrievalService {
      * Retrieve relevant chunks using vector similarity search
      * 
      * @param query - User's question or search query
-     * @param documentIds - Array of document IDs to search within
+     * @param sourceIds - Array of source IDs to search within (renamed from documentIds)
      * @param topK - Number of chunks to return (default: 5)
      * @returns Array of retrieved chunks with similarity scores
      */
     async retrieveRelevantChunks(
         query: string,
-        documentIds: string[],
+        sourceIds: string[],
         topK: number = 5
     ): Promise<RetrievedChunk[]> {
         try {
-            logger.info(`Retrieving top ${topK} chunks for query: "${query.substring(0, 50)}..." from ${documentIds.length} document(s)`);
-            if (!documentIds || documentIds.length === 0) {
-                throw new Error('documentIds must be a non-empty array');
+            logger.info(`Retrieving top ${topK} chunks for query: "${query.substring(0, 50)}..." from ${sourceIds.length} source(s)`);
+            if (!sourceIds || sourceIds.length === 0) {
+                throw new Error('sourceIds must be a non-empty array');
             }
 
             // Step 1: Generate query embedding
@@ -67,50 +67,85 @@ export class RetrievalService {
             const matchCount = topK;
             
             logger.debug(`=== RPC CALL DETAILS ===`);
-            logger.debug(`Requested documentIds: [${documentIds.join(', ')}]`);
+            logger.debug(`Requested sourceIds: [${sourceIds.join(', ')}]`);
             logger.debug(`Match count: ${matchCount}, topK: ${topK}`);
             
-            const { data, error } = await supabase.rpc('match_documents_chunks', {
+            const { data, error } = await supabase.rpc('match_sources_chunks', {
                 query_embedding: queryEmbedding,
                 match_count: matchCount,
-                filter_document_ids: documentIds
+                filter_source_ids: sourceIds
             });
 
             if (error) {
                 logger.error(JSON.stringify(error, null, 2));
                 logger.error(`RPC error: ${error.message}`);
                 logger.warn(`Falling back to direct search`);
-                return await this.directSearch(queryEmbedding, documentIds, topK);
+                return await this.directSearch(queryEmbedding, sourceIds, topK);
             }
 
             logger.debug(`RPC returned ${data?.length || 0} total chunks`);
             
             if (data && data.length > 0) {
-                const returnedDocIds = [...new Set(data.map((d: any) => d.document_id))];
-                logger.debug(`RPC returned chunks from documents: [${returnedDocIds.join(', ')}]`);
+                const returnedSourceIds = [...new Set(data.map((d: any) => d.source_id))];
+                logger.debug(`RPC returned chunks from sources: [${returnedSourceIds.join(', ')}]`);
             }
 
             if (!data || data.length === 0) {
                 logger.error(`⚠️ RPC returned 0 chunks!`);
                 
-                // Check if chunks exist for these document IDs
+                // Check if chunks exist for these source IDs
                 const { data: chunkCount } = await supabase
-                    .from('document_chunks')
-                    .select('document_id', { count: 'exact' })
-                    .in('document_id', documentIds);
+                    .from('source_chunks')
+                    .select('source_id', { count: 'exact' })
+                    .in('source_id', sourceIds);
                 
-                logger.error(`Chunks exist in DB for these docs:`, chunkCount?.length || 0);
+                logger.error(`Chunks exist in DB for these sources:`, chunkCount?.length || 0);
                 logger.warn(`Falling back to direct search`);
-                return await this.directSearch(queryEmbedding, documentIds, topK);
+                return await this.directSearch(queryEmbedding, sourceIds, topK);
             }
 
             const topChunks = data.slice(0, topK);
 
-            const enrichedChunks = await this.enrichWithDocumentNames(topChunks);
-            const avgSimilarity = enrichedChunks.reduce((sum, c) => sum + c.similarity, 0) / enrichedChunks.length;
-            logger.info(`✅ RPC SUCCESS: ${enrichedChunks.length} chunks, avg similarity: ${avgSimilarity.toFixed(3)}`);
+            const enrichedChunks = await this.enrichWithSourceNames(topChunks);
+            
+            // Filter out page markers and very short chunks (likely formatting artifacts)
+            const filteredChunks = enrichedChunks.filter(chunk => {
+                const text = chunk.chunkText.trim();
+                // Filter out page markers like "-- 1 of 4 --" or "-- X of Y --"
+                const isPageMarker = /^--\s*\d+\s+of\s+\d+\s*--$/i.test(text);
+                // Filter out very short chunks (< 30 chars) that are likely formatting
+                const isTooShort = text.length < 30;
+                return !isPageMarker && !isTooShort;
+            });
 
-            return enrichedChunks;
+            // If we filtered out chunks, try to get more to reach topK
+            let finalChunks = filteredChunks;
+            if (filteredChunks.length < topK && data.length > topK) {
+                logger.warn(`Only ${filteredChunks.length} chunks after filtering, trying to get more...`);
+                // Get more chunks and filter them - expand search to up to 3x topK
+                const additionalChunks = data.slice(topK, Math.min(topK * 3, data.length));
+                const enrichedAdditional = await this.enrichWithSourceNames(additionalChunks);
+                const filteredAdditional = enrichedAdditional.filter(chunk => {
+                    const text = chunk.chunkText.trim();
+                    const isPageMarker = /^--\s*\d+\s+of\s+\d+\s*--$/i.test(text);
+                    const isTooShort = text.length < 30;
+                    return !isPageMarker && !isTooShort;
+                });
+                finalChunks = [...filteredChunks, ...filteredAdditional].slice(0, topK);
+                logger.info(`After getting more chunks: ${finalChunks.length} total`);
+            }
+
+            if (finalChunks.length === 0) {
+                logger.error(`⚠️ All chunks were filtered out! Original: ${enrichedChunks.length}, After filter: 0`);
+                // Return original chunks if all were filtered
+                logger.warn(`Returning unfiltered chunks to avoid empty results`);
+                return enrichedChunks.slice(0, topK);
+            }
+
+            const avgSimilarity = finalChunks.reduce((sum, c) => sum + c.similarity, 0) / finalChunks.length;
+            logger.info(`✅ RPC SUCCESS: ${finalChunks.length} chunks (filtered from ${enrichedChunks.length}), avg similarity: ${avgSimilarity.toFixed(3)}`);
+
+            return finalChunks;
 
         } catch (error: any) {
             logger.error(`Error in retrieveRelevantChunks: ${error.message}`);
@@ -119,42 +154,42 @@ export class RetrievalService {
     }
 
     /**
-     * Enrich chunks with document names
+     * Enrich chunks with source names
      */
-    private async enrichWithDocumentNames(chunks: any[]): Promise<RetrievedChunk[]> {
+    private async enrichWithSourceNames(chunks: any[]): Promise<RetrievedChunk[]> {
         try {
-            // Get unique document IDs
-            const docIds = [...new Set(chunks.map((c: any) => c.document_id))];
+            // Get unique source IDs
+            const sourceIds = [...new Set(chunks.map((c: any) => c.source_id))];
             
-            // Fetch document names
-            const { data: documents, error } = await supabase
-                .from('documents')
+            // Fetch source names
+            const { data: sources, error } = await supabase
+                .from('sources')
                 .select('id, original_name')
-                .in('id', docIds);
+                .in('id', sourceIds);
             
             if (error) throw error;
             
-            // Create a map of document ID to document name
-            const docMap = new Map(
-                (documents || []).map((d: any) => [d.id, d.original_name])
+            // Create a map of source ID to source name
+            const sourceMap = new Map(
+                (sources || []).map((s: any) => [s.id, s.original_name])
             );
             
-            // Map chunks with document names
+            // Map chunks with source names
             return chunks.map((chunk: any) => ({
                 id: chunk.id,
-                documentId: chunk.document_id,
-                documentName: docMap.get(chunk.document_id) || 'Unknown',
+                sourceId: chunk.source_id,
+                sourceName: sourceMap.get(chunk.source_id) || 'Unknown',
                 chunkText: chunk.chunk_text,
                 chunkIndex: chunk.chunk_index,
                 similarity: Number(chunk.similarity)
             }));
         } catch (error: any) {
-            logger.error(`Error enriching with document names: ${error.message}`);
+            logger.error(`Error enriching with source names: ${error.message}`);
             // Return chunks without names as fallback
             return chunks.map((chunk: any) => ({
                 id: chunk.id,
-                documentId: chunk.document_id,
-                documentName: 'Unknown',
+                sourceId: chunk.source_id,
+                sourceName: 'Unknown',
                 chunkText: chunk.chunk_text,
                 chunkIndex: chunk.chunk_index,
                 similarity: Number(chunk.similarity)
@@ -168,17 +203,17 @@ export class RetrievalService {
      */
     private async directSearch(
         queryEmbedding: number[],
-        documentIds: string[],
+        sourceIds: string[],
         topK: number
     ): Promise<RetrievedChunk[]> {
         try {
-            logger.info(`Performing direct search for ${documentIds.length} document(s)`);
+            logger.info(`Performing direct search for ${sourceIds.length} source(s)`);
 
-            // Get all chunks from specified documents
+            // Get all chunks from specified sources
             const { data, error } = await supabase
-                .from('document_chunks')
-                .select('id, document_id, chunk_text, chunk_index, embedding')
-                .in('document_id', documentIds)
+                .from('source_chunks')
+                .select('id, source_id, chunk_text, chunk_index, embedding')
+                .in('source_id', sourceIds)
                 .limit(100); // Get more chunks for manual filtering
 
             if (error) throw error;
@@ -189,7 +224,7 @@ export class RetrievalService {
             // Calculate cosine similarity manually
             const chunksWithSimilarity: Array<{
                 id: string;
-                document_id: string;
+                source_id: string;
                 chunk_text: string;
                 chunk_index: number;
                 similarity: number;
@@ -212,7 +247,7 @@ export class RetrievalService {
                     const similarity = this.cosineSimilarity(queryEmbedding, chunkEmbedding);
                     chunksWithSimilarity.push({
                         id: chunk.id,
-                        document_id: chunk.document_id,
+                        source_id: chunk.source_id,
                         chunk_text: chunk.chunk_text,
                         chunk_index: chunk.chunk_index,
                         similarity: similarity
@@ -233,28 +268,58 @@ export class RetrievalService {
             );
             logger.info(`Returning ${topChunks.length} chunks, top similarity: ${topChunks[0]?.similarity.toFixed(3) || 'N/A'}`);
 
-            // Enrich with document names (don't convert similarity, enrichWithDocumentNames expects similarity as-is)
+            // Enrich with source names (don't convert similarity, enrichWithSourceNames expects similarity as-is)
             const enriched = topChunks.map(c => ({
                 id: c.id,
-                documentId: c.document_id,
+                sourceId: c.source_id,
                 chunkText: c.chunk_text,
                 chunkIndex: c.chunk_index,
                 similarity: c.similarity // Already cosine similarity (0-1)
             }));
 
-            // Add document names
-            const docIds = [...new Set(enriched.map(c => c.documentId))];
-            const { data: documents } = await supabase
-                .from('documents')
+            // Filter out page markers and very short chunks
+            const filteredEnriched = enriched.filter(c => {
+                const text = c.chunkText.trim();
+                const isPageMarker = /^--\s*\d+\s+of\s+\d+\s*--$/i.test(text);
+                const isTooShort = text.length < 30;
+                return !isPageMarker && !isTooShort;
+            });
+
+            // If we filtered out chunks, try to get more
+            let finalEnriched = filteredEnriched;
+            if (filteredEnriched.length < topK && chunksWithSimilarity.length > topK) {
+                const additionalChunks = chunksWithSimilarity.slice(topK, Math.min(topK * 2, chunksWithSimilarity.length));
+                const enrichedAdditional = additionalChunks.map(c => ({
+                    id: c.id,
+                    sourceId: c.source_id,
+                    chunkText: c.chunk_text,
+                    chunkIndex: c.chunk_index,
+                    similarity: c.similarity
+                }));
+                const filteredAdditional = enrichedAdditional.filter(c => {
+                    const text = c.chunkText.trim();
+                    const isPageMarker = /^--\s*\d+\s+of\s+\d+\s*--$/i.test(text);
+                    const isTooShort = text.length < 30;
+                    return !isPageMarker && !isTooShort;
+                });
+                finalEnriched = [...filteredEnriched, ...filteredAdditional].slice(0, topK);
+            }
+
+            // Add source names
+            const uniqueSourceIds = [...new Set(finalEnriched.map(c => c.sourceId))];
+            const { data: sources } = await supabase
+                .from('sources')
                 .select('id, original_name')
-                .in('id', docIds);
+                .in('id', uniqueSourceIds);
             
-            const docMap = new Map((documents || []).map(d => [d.id, d.original_name]));
+            const sourceMap = new Map((sources || []).map(s => [s.id, s.original_name]));
             
-            return enriched.map(chunk => ({
+            const finalChunks = finalEnriched.map(chunk => ({
                 ...chunk,
-                documentName: docMap.get(chunk.documentId) || 'Unknown'
+                sourceName: sourceMap.get(chunk.sourceId) || 'Unknown'
             }));
+
+            return finalChunks;
 
         } catch (error: any) {
             logger.error(`Direct search failed: ${error.message}`);
@@ -285,46 +350,46 @@ export class RetrievalService {
     }
 
     /**
-     * Get all chunks for a specific document (for summary generation)
+     * Get all chunks for a specific source (for summary generation)
      */
-    async getAllChunksForDocument(documentId: string): Promise<RetrievedChunk[]> {
+    async getAllChunksForSource(sourceId: string): Promise<RetrievedChunk[]> {
         try {
-            logger.info(`Fetching all chunks for document: ${documentId}`);
+            logger.info(`Fetching all chunks for source: ${sourceId}`);
 
             const { data, error } = await supabase
-                .from('document_chunks')
-                .select('id, document_id, chunk_text, chunk_index')
-                .eq('document_id', documentId)
+                .from('source_chunks')
+                .select('id, source_id, chunk_text, chunk_index')
+                .eq('source_id', sourceId)
                 .order('chunk_index', { ascending: true });
 
             if (error) throw error;
             if (!data || data.length === 0) {
-                logger.warn(`No chunks found for document: ${documentId}`);
+                logger.warn(`No chunks found for source: ${sourceId}`);
                 return [];
             }
 
-            logger.info(`Retrieved ${data.length} chunks for document`);
+            logger.info(`Retrieved ${data.length} chunks for source`);
 
-            // Fetch document name
-            const { data: doc } = await supabase
-                .from('documents')
+            // Fetch source name
+            const { data: source } = await supabase
+                .from('sources')
                 .select('original_name')
-                .eq('id', documentId)
+                .eq('id', sourceId)
                 .single();
 
-            const documentName = doc?.original_name || 'Unknown';
+            const sourceName = source?.original_name || 'Unknown';
 
             return data.map((chunk: any) => ({
                 id: chunk.id,
-                documentId: chunk.document_id,
-                documentName: documentName,
+                sourceId: chunk.source_id,
+                sourceName: sourceName,
                 chunkText: chunk.chunk_text,
                 chunkIndex: chunk.chunk_index,
                 similarity: 1.0 // Not based on similarity for this query
             }));
 
         } catch (error: any) {
-            throw new Error(`Failed to get document chunks: ${error.message}`);
+            throw new Error(`Failed to get source chunks: ${error.message}`);
         }
     }
 
@@ -336,30 +401,30 @@ export class RetrievalService {
             if (chunkIds.length === 0) return [];
 
             const { data, error } = await supabase
-                .from('document_chunks')
-                .select('id, document_id, chunk_text, chunk_index')
+                .from('source_chunks')
+                .select('id, source_id, chunk_text, chunk_index')
                 .in('id', chunkIds);
 
             if (error) throw error;
             if (!data) return [];
 
-            // Get unique document IDs
-            const docIds = [...new Set(data.map((c: any) => c.document_id))];
+            // Get unique source IDs
+            const sourceIds = [...new Set(data.map((c: any) => c.source_id))];
 
-            // Fetch document names
-            const { data: documents } = await supabase
-                .from('documents')
+            // Fetch source names
+            const { data: sources } = await supabase
+                .from('sources')
                 .select('id, original_name')
-                .in('id', docIds);
+                .in('id', sourceIds);
 
-            const docMap = new Map(
-                (documents || []).map((d: any) => [d.id, d.original_name])
+            const sourceMap = new Map(
+                (sources || []).map((s: any) => [s.id, s.original_name])
             );
 
             return data.map((chunk: any) => ({
                 id: chunk.id,
-                documentId: chunk.document_id,
-                documentName: docMap.get(chunk.document_id) || 'Unknown',
+                sourceId: chunk.source_id,
+                sourceName: sourceMap.get(chunk.source_id) || 'Unknown',
                 chunkText: chunk.chunk_text,
                 chunkIndex: chunk.chunk_index,
                 similarity: 1.0

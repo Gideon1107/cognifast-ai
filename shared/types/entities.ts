@@ -25,8 +25,8 @@ export interface Message {
  */
 export interface MessageSource {
     chunkId: string;
-    documentId: string;
-    documentName: string;
+    sourceId: string;
+    sourceName: string;
     chunkText: string;
     chunkIndex: number;
     similarity: number;
@@ -37,23 +37,24 @@ export interface MessageSource {
  */
 export interface Conversation {
     id: string;
-    documentIds: string[];
-    documentNames?: string[];
+    sourceIds: string[];
+    sourceNames?: string[];
     title?: string;
     createdAt: string;
     updatedAt: string;
 }
 
 /**
- * Document metadata
+ * Source metadata
  */
-export interface DocumentMetadata {
+export interface SourceMetadata {
     id?: string;
     filename: string;
     originalName: string;
-    fileType: 'pdf' | 'docx' | 'doc' | 'txt';
+    fileType: 'pdf' | 'docx' | 'doc' | 'txt' | 'url';
     fileSize: number;
     filePath: string;
+    sourceUrl?: string;
     extractedText?: string;
     createdAt?: string;
     updatedAt?: string;

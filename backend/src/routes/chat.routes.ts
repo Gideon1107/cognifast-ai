@@ -11,7 +11,7 @@ const router = Router();
  * POST   /api/chat/conversations/:conversationId/messages - Send a message and get AI response
  * GET    /api/chat/conversations/:conversationId         - Get a conversation with all messages
  * PATCH  /api/chat/conversations/:conversationId         - Update a conversation title
- * GET    /api/chat/documents/:documentId/conversations   - Get all conversations for a document
+ * GET    /api/chat/sources/:sourceId/conversations       - Get all conversations for a source
  * DELETE /api/chat/conversations/:conversationId         - Delete a conversation
  */
 
@@ -30,8 +30,8 @@ router.get('/conversations/:conversationId', ChatController.getConversation);
 // Update a conversation
 router.patch('/conversations/:conversationId', ChatController.updateConversation);
 
-// Get all conversations for a document
-router.get('/documents/:documentId/conversations', ChatController.getConversationsByDocument);
+// Get all conversations for a source
+router.get('/sources/:sourceId/conversations', ChatController.getConversationsBySource);
 
 // Delete a conversation
 router.delete('/conversations/:conversationId', ChatController.deleteConversation);

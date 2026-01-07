@@ -3,7 +3,7 @@
  * Request and Response types for all API endpoints
  */
 
-import { Message, MessageSource, Conversation, DocumentMetadata } from './entities';
+import { Message, MessageSource, Conversation, SourceMetadata } from './entities';
 
 // ============================================
 // CHAT API TYPES
@@ -13,9 +13,9 @@ import { Message, MessageSource, Conversation, DocumentMetadata } from './entiti
  * Request to start a new conversation
  */
 export interface StartConversationRequest {
-    documentIds: string[]; // Array of 1 or more document IDs
+    sourceIds: string[]; // Array of 1 or more source IDs
     initialMessage?: string;
-    title?: string; // Optional title for the conversation
+    title?: string;
 }
 
 /**
@@ -96,34 +96,41 @@ export interface UpdateConversationResponse {
 }
 
 // ============================================
-// DOCUMENT API TYPES
+// SOURCE API TYPES
 // ============================================
 
 /**
- * Response from uploading a document
+ * Request to upload a source from URL
  */
-export interface DocumentUploadResponse {
+export interface UploadUrlRequest {
+    url: string;
+}
+
+/**
+ * Response from uploading a source
+ */
+export interface SourceUploadResponse {
     success: boolean;
     message: string;
-    document?: DocumentMetadata;
+    source?: SourceMetadata;
     error?: string;
 }
 
 /**
- * Response from getting all documents
+ * Response from getting all sources
  */
-export interface GetDocumentsResponse {
+export interface GetSourcesResponse {
     success: boolean;
-    documents: DocumentMetadata[];
+    sources: SourceMetadata[];
     error?: string;
 }
 
 /**
- * Response from getting a single document
+ * Response from getting a single source
  */
-export interface GetDocumentResponse {
+export interface GetSourceResponse {
     success: boolean;
-    document: DocumentMetadata;
+    source: SourceMetadata;
     error?: string;
 }
 

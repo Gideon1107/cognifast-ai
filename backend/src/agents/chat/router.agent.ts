@@ -39,37 +39,37 @@ export class RouterAgent {
                 .map(m => `${m.role}: ${m.content}`)
                 .join('\n');
 
-            const docCount = Array.isArray(state.documentIds) ? state.documentIds.length : 0;
-            const hasDocuments = docCount > 0;
+            const sourceCount = Array.isArray(state.sourceIds) ? state.sourceIds.length : 0;
+            const hasSources = sourceCount > 0;
 
             logger.info('Using LLM for routing decision');
 
-            const prompt = `You are a router for a document-grounded chat system.
+            const prompt = `You are a router for a source-grounded chat system.
 
 Task: choose exactly ONE label for the user query.
 
 Labels:
-- retrieve: get relevant chunks from the attached documents before answering
-- direct_answer: respond without retrieval (greetings/thanks/pleasantries or questions unrelated to document content)
+- retrieve: get relevant chunks from the attached sources before answering
+- direct_answer: respond without retrieval (greetings/thanks/pleasantries or questions unrelated to source content)
 - clarify: ask a clarifying question ONLY if the user input is too unclear to act on
 
 Context:
-- documents_attached: ${hasDocuments ? 'yes' : 'no'} (count=${docCount})
+- sources_attached: ${hasSources ? 'yes' : 'no'} (count=${sourceCount})
 - recent_messages:
 ${conversationHistory || '(none)'}
 
 Rules (important):
-1) If documents_attached=yes: choose retrieve for ANY factual question that could be answered from the documents, even if it is a yes/no question.
-   Examples of document-grounded factual questions: skills, programming, experience, work history, education, certifications, projects, tools, technologies, roles, companies, dates, achievements.
-2) Choose direct_answer ONLY for social/utility messages (hi/hello/thanks/bye), or meta questions unrelated to document content.
+1) If sources_attached=yes: choose retrieve for ANY factual question that could be answered from the sources, even if it is a yes/no question.
+   Examples of source-grounded factual questions: skills, programming, experience, work history, education, certifications, projects, tools, technologies, roles, companies, dates, achievements.
+2) Choose direct_answer ONLY for social/utility messages (hi/hello/thanks/bye), or meta questions unrelated to source content.
 3) Choose clarify ONLY for extremely underspecified inputs (e.g. "?", "what", "huh") or missing referent (e.g. "what about that?" with no context).
-4) If uncertain and documents_attached=yes, prefer retrieve.
+4) If uncertain and sources_attached=yes, prefer retrieve.
 
 Examples:
-User: "Does he have a programming skill?" (documents_attached=yes) -> retrieve
+User: "Does he have a programming skill?" (sources_attached=yes) -> retrieve
 User: "Hi" -> direct_answer
 User: "?" -> clarify
-User: "What is RAG?" (documents_attached=yes) -> direct_answer
+User: "What is RAG?" (sources_attached=yes) -> direct_answer
 
 User query: "${query}"
 

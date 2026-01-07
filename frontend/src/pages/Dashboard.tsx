@@ -289,8 +289,8 @@ export function Dashboard() {
                         month: 'short', 
                         day: 'numeric', 
                         year: 'numeric' 
-                      })} • {conv.documentNames && conv.documentNames.length > 0 
-                        ? `${conv.documentNames.length} source${conv.documentNames.length > 1 ? 's' : ''}`
+                      })} • {conv.sourceNames && conv.sourceNames.length > 0 
+                        ? `${conv.sourceNames.length} source${conv.sourceNames.length > 1 ? 's' : ''}`
                         : '0 sources'
                       }
                     </p>

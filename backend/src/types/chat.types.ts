@@ -53,7 +53,7 @@ export type ResponseQuality = 'good' | 'poor' | 'pending';
  */
 export interface ConversationState {
     conversationId: string;
-    documentIds: string[]; // Array of document IDs (always an array)
+    sourceIds: string[];
     messages: Message[];
     currentQuery: string;
     retrievedChunks: RetrievedChunk[];

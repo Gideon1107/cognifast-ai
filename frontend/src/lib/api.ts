@@ -5,9 +5,9 @@
 
 import axios, { AxiosError } from 'axios';
 import type {
-  DocumentUploadResponse,
-  GetDocumentsResponse,
-  GetDocumentResponse,
+  SourceUploadResponse,
+  GetSourcesResponse,
+  GetSourceResponse,
   StartConversationRequest,
   StartConversationResponse,
   SendMessageRequest,
@@ -45,18 +45,18 @@ const handleError = (error: AxiosError): never => {
 };
 
 // ============================================
-// DOCUMENT API
+// SOURCE API
 // ============================================
 
 /**
- * Upload a document
+ * Upload a source (file)
  */
-export async function uploadDocument(file: File): Promise<DocumentUploadResponse> {
+export async function uploadSource(file: File): Promise<SourceUploadResponse> {
   try {
     const formData = new FormData();
     formData.append('document', file);
 
-    const response = await apiClient.post<DocumentUploadResponse>('/documents/upload', formData, {
+    const response = await apiClient.post<SourceUploadResponse>('/sources/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -69,11 +69,11 @@ export async function uploadDocument(file: File): Promise<DocumentUploadResponse
 }
 
 /**
- * Get all documents
+ * Get all sources
  */
-export async function getDocuments(): Promise<GetDocumentsResponse> {
+export async function getSources(): Promise<GetSourcesResponse> {
   try {
-    const response = await apiClient.get<GetDocumentsResponse>('/documents');
+    const response = await apiClient.get<GetSourcesResponse>('/sources');
     return response.data;
   } catch (error) {
     return handleError(error as AxiosError);
@@ -81,11 +81,11 @@ export async function getDocuments(): Promise<GetDocumentsResponse> {
 }
 
 /**
- * Get document by ID
+ * Get source by ID
  */
-export async function getDocumentById(id: string): Promise<GetDocumentResponse> {
+export async function getSourceById(id: string): Promise<GetSourceResponse> {
   try {
-    const response = await apiClient.get<GetDocumentResponse>(`/documents/${id}`);
+    const response = await apiClient.get<GetSourceResponse>(`/sources/${id}`);
     return response.data;
   } catch (error) {
     return handleError(error as AxiosError);
@@ -193,9 +193,9 @@ export async function deleteConversation(conversationId: string): Promise<Delete
 }
 
 export default {
-  uploadDocument,
-  getDocuments,
-  getDocumentById,
+  uploadSource,
+  getSources,
+  getSourceById,
   startConversation,
   sendMessage,
   getConversation,

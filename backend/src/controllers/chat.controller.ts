@@ -22,21 +22,21 @@ export class ChatController {
      */
     static async startConversation(req: Request, res: Response): Promise<void> {
         try {
-            const { documentIds, initialMessage, title } = req.body as StartConversationRequest;
+            const { sourceIds, initialMessage, title } = req.body as StartConversationRequest;
 
             // Validate input
-            if (!documentIds || !Array.isArray(documentIds) || documentIds.length === 0) {
+            if (!sourceIds || !Array.isArray(sourceIds) || sourceIds.length === 0) {
                 res.status(400).json({
                     success: false,
-                    error: 'documentIds must be a non-empty array'
+                    error: 'sourceIds must be a non-empty array'
                 } as StartConversationResponse);
                 return;
             }
 
-            logger.info(`Starting new conversation for ${documentIds.length} document(s): ${documentIds.join(', ')}${title ? ` with title: "${title}"` : ''}`);
+            logger.info(`Starting new conversation for ${sourceIds.length} source(s): ${sourceIds.join(', ')}${title ? ` with title: "${title}"` : ''}`);
 
             const { conversation, initialMessages } = await ChatService.createConversation({
-                documentIds,
+                sourceIds,
                 initialMessage,
                 title
             });
@@ -144,24 +144,24 @@ export class ChatController {
     }
 
     /**
-     * GET /api/chat/documents/:documentId/conversations
-     * Get all conversations for a document
+     * GET /api/chat/sources/:sourceId/conversations
+     * Get all conversations for a source
      */
-    static async getConversationsByDocument(req: Request, res: Response): Promise<void> {
+    static async getConversationsBySource(req: Request, res: Response): Promise<void> {
         try {
-            const { documentId } = req.params;
+            const { sourceId } = req.params;
 
-            if (!documentId) {
+            if (!sourceId) {
                 res.status(400).json({
                     success: false,
-                    error: 'Document ID is required'
+                    error: 'Source ID is required'
                 });
                 return;
             }
 
-            logger.info(`Fetching conversations for document: ${documentId}`);
+            logger.info(`Fetching conversations for source: ${sourceId}`);
 
-            const conversations = await ChatService.getConversationsByDocument(documentId);
+            const conversations = await ChatService.getConversationsBySource(sourceId);
 
             res.status(200).json({
                 success: true,

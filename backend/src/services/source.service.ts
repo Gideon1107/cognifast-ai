@@ -1,26 +1,30 @@
 import fs from 'fs';
 import path from 'path';
 import mammoth from 'mammoth';
-import { DocumentMetadata } from '../types/document.types';
+import { SourceMetadata } from '../types/source.types';
 
 // Import pdf-parse v2 - uses new API with PDFParse class
 // const pdfParseLib = require('pdf-parse');
 import { PDFParse } from 'pdf-parse';
 
-export class DocumentService {
+export class SourceService {
     /**
-     * Extract text from a file based on its type
+     * Extract text from a file or URL based on its type
      */
-    static async extractText(filePath: string, fileType: string): Promise<string> {
+    static async extractText(filePathOrUrl: string, fileType: string): Promise<string> {
         try {
             switch (fileType.toLowerCase()) {
                 case 'pdf':
-                    return await this.extractTextFromPDF(filePath);
+                    return await this.extractTextFromPDF(filePathOrUrl);
                 case 'docx':
                 case 'doc':
-                    return await this.extractTextFromDOCX(filePath);
+                    return await this.extractTextFromDOCX(filePathOrUrl);
                 case 'txt':
-                    return await this.extractTextFromTXT(filePath);
+                    return await this.extractTextFromTXT(filePathOrUrl);
+                case 'url':
+                    // URL extraction will be handled by WebScraperService
+                    // This method signature is kept for consistency
+                    throw new Error('URL extraction should be handled by WebScraperService');
                 default:
                     throw new Error(`Unsupported file type: ${fileType}`);
             }
@@ -66,10 +70,15 @@ export class DocumentService {
     }
 
     /**
-     * Determine file type from filename
+     * Determine file type from filename or URL
      */
-    static getFileType(filename: string): 'pdf' | 'docx' | 'doc' | 'txt' {
-        const ext = path.extname(filename).toLowerCase();
+    static getFileType(filenameOrUrl: string): 'pdf' | 'docx' | 'doc' | 'txt' | 'url' {
+        // Check if it's a URL
+        if (filenameOrUrl.startsWith('http://') || filenameOrUrl.startsWith('https://')) {
+            return 'url';
+        }
+        
+        const ext = path.extname(filenameOrUrl).toLowerCase();
         switch (ext) {
             case '.pdf':
                 return 'pdf';

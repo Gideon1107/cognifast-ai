@@ -1,24 +1,24 @@
 /**
- * Document Upload Modal
- * Modal for uploading documents when creating a new classroom
+ * Source Upload Modal
+ * Modal for uploading sources (files) when creating a new classroom
  */
 
 import { useState, useRef } from 'react';
 import type { DragEvent } from 'react';
 import { X, Upload, FileText, File, FileCheck, AlertCircle, Trash2 } from 'lucide-react';
-import { uploadDocument } from '../../lib/api';
-import type { DocumentMetadata } from '@shared/types';
+import { uploadSource } from '../../lib/api';
+import type { SourceMetadata } from '@shared/types';
 
-interface DocumentUploadModalProps {
+interface SourceUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onStartClassroom: (documentIds: string[], title: string) => void;
+  onStartClassroom: (sourceIds: string[], title: string) => void;
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'error';
 
-export function DocumentUploadModal({ isOpen, onClose, onStartClassroom }: DocumentUploadModalProps) {
-  const [uploadedDocuments, setUploadedDocuments] = useState<DocumentMetadata[]>([]);
+export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceUploadModalProps) {
+  const [uploadedSources, setUploadedSources] = useState<SourceMetadata[]>([]);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -64,14 +64,14 @@ export function DocumentUploadModal({ isOpen, onClose, onStartClassroom }: Docum
         });
       }, 200);
 
-      const response = await uploadDocument(file);
+      const response = await uploadSource(file);
       
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      if (response.success && response.document) {
-        // Add document to the list and keep modal open
-        setUploadedDocuments((prev) => [...prev, response.document!]);
+      if (response.success && response.source) {
+        // Add source to the list and keep modal open
+        setUploadedSources((prev) => [...prev, response.source!]);
         setUploadStatus('idle');
         setUploadProgress(0);
         setErrorMessage(null);
@@ -80,7 +80,7 @@ export function DocumentUploadModal({ isOpen, onClose, onStartClassroom }: Docum
       }
     } catch (error) {
       setUploadStatus('error');
-      const errorMessage = error instanceof Error ? error.message : 'Failed to upload document. Please try again.';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload source. Please try again.';
       setErrorMessage(errorMessage);
       setUploadProgress(0);
     }
@@ -120,26 +120,26 @@ export function DocumentUploadModal({ isOpen, onClose, onStartClassroom }: Docum
     setUploadProgress(0);
     setErrorMessage(null);
     setIsDragging(false);
-    setUploadedDocuments([]); // Reset uploaded documents when closing
+    setUploadedSources([]); // Reset uploaded sources when closing
     onClose();
   };
 
-  const handleRemoveDocument = (documentId: string) => {
-    setUploadedDocuments((prev) => prev.filter((doc) => doc.id !== documentId));
+  const handleRemoveSource = (sourceId: string) => {
+    setUploadedSources((prev) => prev.filter((source) => source.id !== sourceId));
   };
 
   const handleStartClassroom = async () => {
-    if (uploadedDocuments.length === 0) {
-      setErrorMessage('Please upload at least one document to start a classroom.');
+    if (uploadedSources.length === 0) {
+      setErrorMessage('Please upload at least one source to start a classroom.');
       return;
     }
 
-    const documentIds = uploadedDocuments
-      .map((doc) => doc.id)
+    const sourceIds = uploadedSources
+      .map((source) => source.id)
       .filter((id): id is string => !!id);
 
-    if (documentIds.length === 0) {
-      setErrorMessage('Invalid document IDs. Please try uploading again.');
+    if (sourceIds.length === 0) {
+      setErrorMessage('Invalid source IDs. Please try uploading again.');
       return;
     }
 
@@ -150,7 +150,7 @@ export function DocumentUploadModal({ isOpen, onClose, onStartClassroom }: Docum
 
     setIsStarting(true);
     try {
-      onStartClassroom(documentIds, classroomName.trim());
+      onStartClassroom(sourceIds, classroomName.trim());
     } catch (error) {
       setIsStarting(false);
       const errorMessage = error instanceof Error ? error.message : 'Failed to start classroom. Please try again.';
@@ -178,7 +178,7 @@ export function DocumentUploadModal({ isOpen, onClose, onStartClassroom }: Docum
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-semibold text-gray-900">Upload Document</h2>
+          <h2 className="text-2xl font-semibold text-gray-900">Upload Source</h2>
           <button
             onClick={handleClose}
             disabled={uploadStatus === 'uploading'}
@@ -190,32 +190,32 @@ export function DocumentUploadModal({ isOpen, onClose, onStartClassroom }: Docum
 
         {/* Content */}
         <div className="p-6">
-          {/* Uploaded Documents List */}
-          {uploadedDocuments.length > 0 && (
+          {/* Uploaded Sources List */}
+          {uploadedSources.length > 0 && (
             <div className="mb-6">
               <h3 className="text-sm font-medium text-gray-900 mb-3">
-                Uploaded Documents ({uploadedDocuments.length})
+                Uploaded Sources ({uploadedSources.length})
               </h3>
               <div className="space-y-2 max-h-48 overflow-y-auto">
-                {uploadedDocuments.map((doc) => (
+                {uploadedSources.map((source) => (
                   <div
-                    key={doc.id}
+                    key={source.id}
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <FileText className="w-5 h-5 text-blue-500 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          {doc.originalName || doc.filename}
+                          {source.originalName || source.filename}
                         </p>
-                        <p className="text-xs text-gray-500">{formatFileSize(doc.fileSize)}</p>
+                        <p className="text-xs text-gray-500">{formatFileSize(source.fileSize)}</p>
                       </div>
                     </div>
                     <button
-                      onClick={() => handleRemoveDocument(doc.id!)}
+                      onClick={() => handleRemoveSource(source.id!)}
                       disabled={uploadStatus === 'uploading' || isStarting}
                       className="p-1.5 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Remove document"
+                      title="Remove source"
                     >
                       <Trash2 className="w-4 h-4 text-red-600" />
                     </button>
@@ -269,9 +269,9 @@ export function DocumentUploadModal({ isOpen, onClose, onStartClassroom }: Docum
                 <Upload className="w-16 h-16 text-gray-400 mx-auto" />
                 <div>
                   <p className="text-lg font-medium text-gray-900">
-                    {uploadedDocuments.length > 0
-                      ? 'Add another document'
-                      : 'Drag and drop your document here'}
+                    {uploadedSources.length > 0
+                      ? 'Add another source'
+                      : 'Drag and drop your source here'}
                   </p>
                   <p className="text-sm text-gray-600 mt-2">or click to browse</p>
                 </div>
@@ -308,7 +308,7 @@ export function DocumentUploadModal({ isOpen, onClose, onStartClassroom }: Docum
           )}
 
           {/* Classroom Name Input */}
-          {uploadedDocuments.length > 0 && (
+          {uploadedSources.length > 0 && (
             <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
               <div>
                 <label htmlFor="classroom-name" className="block text-sm font-medium text-gray-900 mb-2">

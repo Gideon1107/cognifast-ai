@@ -15,7 +15,7 @@ const logger = createLogger('CHAT-SERVICE');
 
 export class ChatService {
     /**
-     * Get all conversations with document IDs and names
+     * Get all conversations with source IDs and names
      */
     static async getAllConversations(): Promise<Conversation[]> {
         try {
@@ -33,29 +33,29 @@ export class ChatService {
                 return [];
             }
 
-            // Enrich each conversation with document IDs and names
-            const conversationsWithDocs = await Promise.all(
+            // Enrich each conversation with source IDs and names
+            const conversationsWithSources = await Promise.all(
                 conversations.map(async (conv) => {
-                    // Get document IDs from junction table
-                    const { data: convDocs } = await supabase
-                        .from('conversation_documents')
-                        .select('document_id')
+                    // Get source IDs from junction table
+                    const { data: convSources } = await supabase
+                        .from('conversation_sources')
+                        .select('source_id')
                         .eq('conversation_id', conv.id);
 
-                    const docIds = (convDocs || []).map(d => d.document_id);
+                    const sourceIds = (convSources || []).map(s => s.source_id);
 
-                    // Fetch document names
-                    const { data: docDetails } = await supabase
-                        .from('documents')
+                    // Fetch source names
+                    const { data: sourceDetails } = await supabase
+                        .from('sources')
                         .select('id, original_name')
-                        .in('id', docIds);
+                        .in('id', sourceIds);
 
-                    const docNames = (docDetails || []).map(d => d.original_name);
+                    const sourceNames = (sourceDetails || []).map(s => s.original_name);
 
                     return {
                         id: conv.id,
-                        documentIds: docIds,
-                        documentNames: docNames,
+                        sourceIds: sourceIds,
+                        sourceNames: sourceNames,
                         title: conv.title,
                         createdAt: conv.created_at,
                         updatedAt: conv.updated_at
@@ -63,7 +63,7 @@ export class ChatService {
                 })
             );
 
-            return conversationsWithDocs;
+            return conversationsWithSources;
 
         } catch (error: any) {
             logger.error(`Error getting all conversations: ${error.message}`);
@@ -76,27 +76,27 @@ export class ChatService {
      */
     static async createConversation(request: StartConversationRequest): Promise<{ conversation: Conversation; initialMessages: Message[] }> {
         try {
-            const { documentIds } = request;
+            const { sourceIds } = request;
 
-            // Validate documentIds is non-empty array
-            if (!documentIds || !Array.isArray(documentIds) || documentIds.length === 0) {
-                throw new Error('documentIds must be a non-empty array');
+            // Validate sourceIds is non-empty array
+            if (!sourceIds || !Array.isArray(sourceIds) || sourceIds.length === 0) {
+                throw new Error('sourceIds must be a non-empty array');
             }
 
-            // Validate all documents exist
-            const { data: docs, error: docError } = await supabase
-                .from('documents')
+            // Validate all sources exist
+            const { data: sources, error: sourceError } = await supabase
+                .from('sources')
                 .select('id, original_name')
-                .in('id', documentIds);
+                .in('id', sourceIds);
 
-            if (docError) {
-                logger.error('Error fetching documents:', docError.message);
-                throw new Error(`Error fetching documents: ${docError.message}`);
+            if (sourceError) {
+                logger.error('Error fetching sources:', sourceError.message);
+                throw new Error(`Error fetching sources: ${sourceError.message}`);
             }
 
-            if (!docs || docs.length !== documentIds.length) {
-                logger.error('One or more documents not found');
-                throw new Error('One or more documents not found');
+            if (!sources || sources.length !== sourceIds.length) {
+                logger.error('One or more sources not found');
+                throw new Error('One or more sources not found');
             }
 
             // Create conversation
@@ -133,29 +133,29 @@ export class ChatService {
                 throw new Error(`Failed to create conversation: ${error.message}`);
             }
 
-            // Insert document associations via junction table
-            const associations = documentIds.map(docId => ({
+            // Insert source associations via junction table
+            const associations = sourceIds.map(sourceId => ({
                 conversation_id: conversationId,
-                document_id: docId
+                source_id: sourceId
             }));
 
             const { error: junctionError } = await supabase
-                .from('conversation_documents')
+                .from('conversation_sources')
                 .insert(associations);
 
             if (junctionError) {
                 // Rollback: delete the conversation
                 logger.error(`Failed to associate documents: ${junctionError.message}`);
                 await supabase.from('conversations').delete().eq('id', conversationId);
-                throw new Error(`Failed to associate documents: ${junctionError.message}`);
+                throw new Error(`Failed to associate sources: ${junctionError.message}`);
             }
 
-            logger.info(`Conversation created: ${conversationId} with ${documentIds.length} document(s)`);
+            logger.info(`Conversation created: ${conversationId} with ${sourceIds.length} source(s)`);
 
             const conversation: Conversation = {
                 id: data.id,
-                documentIds: documentIds,
-                documentNames: docs.map(d => d.original_name),
+                sourceIds: sourceIds,
+                sourceNames: sources.map(s => s.original_name),
                 title: data.title,
                 createdAt: data.created_at,
                 updatedAt: data.updated_at
@@ -213,25 +213,25 @@ export class ChatService {
             }
             logger.info(`[TIMING] Fetch conversation: ${Date.now() - convStartTime}ms`);
 
-            // Get document IDs from junction table
-            const docStartTime = Date.now();
-            const { data: convoDocs, error: convoDocsError } = await supabase
-                .from('conversation_documents')
-                .select('document_id')
+            // Get source IDs from junction table
+            const sourceStartTime = Date.now();
+            const { data: convoSources, error: convoSourcesError } = await supabase
+                .from('conversation_sources')
+                .select('source_id')
                 .eq('conversation_id', request.conversationId);
 
-            if (convoDocsError) {
-                logger.error(`Failed to fetch conversation documents: ${convoDocsError.message}`);
-                throw new Error(`Failed to fetch conversation documents: ${convoDocsError.message}`);
+            if (convoSourcesError) {
+                logger.error(`Failed to fetch conversation sources: ${convoSourcesError.message}`);
+                throw new Error(`Failed to fetch conversation sources: ${convoSourcesError.message}`);
             }
 
-            const documentIds = (convoDocs || []).map(cd => cd.document_id);
+            const sourceIds = (convoSources || []).map(cs => cs.source_id);
 
-            if (documentIds.length === 0) {
-                logger.error('No documents associated with this conversation');
-                throw new Error('No documents associated with this conversation');
+            if (sourceIds.length === 0) {
+                logger.error('No sources associated with this conversation');
+                throw new Error('No sources associated with this conversation');
             }
-            logger.info(`[TIMING] Fetch document IDs: ${Date.now() - docStartTime}ms`);
+            logger.info(`[TIMING] Fetch source IDs: ${Date.now() - sourceStartTime}ms`);
 
             // Get conversation history
             const historyStartTime = Date.now();
@@ -284,7 +284,7 @@ export class ChatService {
             const isFirstMessage = messages.length === 0;
             const initialState: ConversationState = {
                 conversationId: request.conversationId,
-                documentIds: documentIds, // Array of document IDs
+                sourceIds: sourceIds, // Array of source IDs
                 messages: [...messages, userMessage], // Include user message
                 currentQuery: request.message,
                 retrievedChunks: [],
@@ -380,27 +380,27 @@ export class ChatService {
                 throw new Error(`Conversation not found: ${conversationId}`);
             }
 
-            // Get document IDs and names from junction table
-            const { data: convDocs, error: convDocsError } = await supabase
-                .from('conversation_documents')
-                .select('document_id')
+            // Get source IDs and names from junction table
+            const { data: convSources, error: convSourcesError } = await supabase
+                .from('conversation_sources')
+                .select('source_id')
                 .eq('conversation_id', conversationId);
 
-            if (convDocsError) {
-                logger.error(`Failed to fetch conversation documents: ${convDocsError.message}`);
-                throw new Error(`Failed to fetch conversation documents: ${convDocsError.message}`);
+            if (convSourcesError) {
+                logger.error(`Failed to fetch conversation sources: ${convSourcesError.message}`);
+                throw new Error(`Failed to fetch conversation sources: ${convSourcesError.message}`);
             }
 
-            const documentIds = (convDocs || []).map(cd => cd.document_id);
+            const sourceIds = (convSources || []).map(cs => cs.source_id);
 
-            // Get document names
-            let documentNames: string[] = [];
-            if (documentIds.length > 0) {
-                const { data: docs } = await supabase
-                    .from('documents')
+            // Get source names
+            let sourceNames: string[] = [];
+            if (sourceIds.length > 0) {
+                const { data: sources } = await supabase
+                    .from('sources')
                     .select('id, original_name')
-                    .in('id', documentIds);
-                documentNames = (docs || []).map(d => d.original_name);
+                    .in('id', sourceIds);
+                sourceNames = (sources || []).map(s => s.original_name);
             }
 
             // Get messages
@@ -427,8 +427,8 @@ export class ChatService {
             return {
                 conversation: {
                     id: conversation.id,
-                    documentIds: documentIds,
-                    documentNames: documentNames,
+                    sourceIds: sourceIds,
+                    sourceNames: sourceNames,
                     title: conversation.title,
                     createdAt: conversation.created_at,
                     updatedAt: conversation.updated_at
@@ -443,22 +443,22 @@ export class ChatService {
     }
 
     /**
-     * Get all conversations for a document
+     * Get all conversations for a source
      */
-    static async getConversationsByDocument(documentId: string): Promise<Conversation[]> {
+    static async getConversationsBySource(sourceId: string): Promise<Conversation[]> {
         try {
-            // Get conversation IDs that include this document via junction table
-            const { data: convDocs, error: junctionError } = await supabase
-                .from('conversation_documents')
+            // Get conversation IDs that include this source via junction table
+            const { data: convSources, error: junctionError } = await supabase
+                .from('conversation_sources')
                 .select('conversation_id')
-                .eq('document_id', documentId);
+                .eq('source_id', sourceId);
 
             if (junctionError) {
                 logger.error(`Failed to fetch conversations: ${junctionError.message}`);
                 throw new Error(`Failed to fetch conversations: ${junctionError.message}`);
             }
 
-            const conversationIds = (convDocs || []).map(cd => cd.conversation_id);
+            const conversationIds = (convSources || []).map(cs => cs.conversation_id);
 
             if (conversationIds.length === 0) {
                 return [];
@@ -476,28 +476,28 @@ export class ChatService {
                 throw new Error(`Failed to fetch conversations: ${error.message}`);
             }
 
-            // For each conversation, fetch all associated document IDs and names
-            const conversationsWithDocs = await Promise.all(
+            // For each conversation, fetch all associated source IDs and names
+            const conversationsWithSources = await Promise.all(
                 (conversations || []).map(async (conv) => {
-                    const { data: docs } = await supabase
-                        .from('conversation_documents')
-                        .select('document_id')
+                    const { data: sources } = await supabase
+                        .from('conversation_sources')
+                        .select('source_id')
                         .eq('conversation_id', conv.id);
 
-                    const docIds = (docs || []).map(d => d.document_id);
+                    const sourceIds = (sources || []).map(s => s.source_id);
 
-                    // Fetch document names
-                    const { data: docDetails } = await supabase
-                        .from('documents')
+                    // Fetch source names
+                    const { data: sourceDetails } = await supabase
+                        .from('sources')
                         .select('id, original_name')
-                        .in('id', docIds);
+                        .in('id', sourceIds);
 
-                    const docNames = (docDetails || []).map(d => d.original_name);
+                    const sourceNames = (sourceDetails || []).map(s => s.original_name);
 
                     return {
                         id: conv.id,
-                        documentIds: docIds,
-                        documentNames: docNames,
+                        sourceIds: sourceIds,
+                        sourceNames: sourceNames,
                         title: conv.title,
                         createdAt: conv.created_at,
                         updatedAt: conv.updated_at
@@ -505,7 +505,7 @@ export class ChatService {
                 })
             );
 
-            return conversationsWithDocs;
+            return conversationsWithSources;
 
         } catch (error: any) {
             logger.error(`Error getting conversations by document: ${error.message}`);
@@ -555,28 +555,28 @@ export class ChatService {
                 throw new Error(`Failed to update conversation title: ${error.message}`);
             }
 
-            // Enrich with document names (similar to getAllConversations)
-            const { data: convDocs } = await supabase
-                .from('conversation_documents')
-                .select('document_id')
+            // Enrich with source names (similar to getAllConversations)
+            const { data: convSources } = await supabase
+                .from('conversation_sources')
+                .select('source_id')
                 .eq('conversation_id', conversationId);
 
-            const docIds = (convDocs || []).map(d => d.document_id);
+            const sourceIds = (convSources || []).map(s => s.source_id);
 
-            // Fetch document names
-            const { data: docDetails } = await supabase
-                .from('documents')
+            // Fetch source names
+            const { data: sourceDetails } = await supabase
+                .from('sources')
                 .select('id, original_name')
-                .in('id', docIds);
+                .in('id', sourceIds);
 
-            const documentIds: string[] = docIds;
-            const documentNames: string[] = (docDetails || []).map(d => d.original_name);
+            const sourceIdsArray: string[] = sourceIds;
+            const sourceNames: string[] = (sourceDetails || []).map(s => s.original_name);
 
             const conversation: Conversation = {
                 id: data.id,
                 title: data.title || null,
-                documentIds,
-                documentNames,
+                sourceIds: sourceIdsArray,
+                sourceNames: sourceNames,
                 createdAt: data.created_at,
                 updatedAt: data.updated_at
             };
@@ -631,22 +631,22 @@ export class ChatService {
                 throw new Error(`Conversation not found: ${request.conversationId}`);
             }
 
-            // Get document IDs from junction table
-            const { data: convDocs, error: convDocsError } = await supabase
-                .from('conversation_documents')
-                .select('document_id')
+            // Get source IDs from junction table
+            const { data: convSources, error: convSourcesError } = await supabase
+                .from('conversation_sources')
+                .select('source_id')
                 .eq('conversation_id', request.conversationId);
 
-            if (convDocsError) {
-                logger.error(`Failed to fetch conversation documents: ${convDocsError.message}`);
-                throw new Error(`Failed to fetch conversation documents: ${convDocsError.message}`);
+            if (convSourcesError) {
+                logger.error(`Failed to fetch conversation sources: ${convSourcesError.message}`);
+                throw new Error(`Failed to fetch conversation sources: ${convSourcesError.message}`);
             }
 
-            const documentIds = (convDocs || []).map(cd => cd.document_id);
+            const sourceIds = (convSources || []).map(cs => cs.source_id);
 
-            if (documentIds.length === 0) {
-                logger.error('No documents associated with this conversation');
-                throw new Error('No documents associated with this conversation');
+            if (sourceIds.length === 0) {
+                logger.error('No sources associated with this conversation');
+                throw new Error('No sources associated with this conversation');
             }
 
             // Get conversation history
@@ -693,7 +693,7 @@ export class ChatService {
             // Prepare initial state
             const initialState: ConversationState = {
                 conversationId: request.conversationId,
-                documentIds: documentIds, // Array of document IDs
+                sourceIds: sourceIds, // Array of source IDs
                 messages: [...messages, userMessage],
                 currentQuery: request.message,
                 retrievedChunks: [],
