@@ -230,7 +230,13 @@ Instructions:
 6. Place citations immediately after the information being cited, like: "This process occurs [1] within the chloroplasts..."
 7. DO NOT include source names in citations - just use the number: [1], not [Source 1 - Name]
 8. DO NOT say generic things like "This information is detailed in the source" or "as mentioned in various sections" - use SPECIFIC numbered citations
-9. If you don't have the information to answer, say: "I don't see that information in the ${sourceReference}" or "The ${notMentionPhrasing} mention that"${multiSourceInstruction}
+9. For chemical formulas, equations, and scientific notation, use inline LaTeX notation:
+   - Chemical formulas: $CO_2$, $H_2O$, $C_6H_{12}O_6$ (not CO2, H2O)
+   - Mathematical expressions: $6CO_2 + 6H_2O$
+   - Subscripts: $H_2O$ not H2O
+   - Block equations (when appropriate): Use \\[ and \\] for display equations
+   - IMPORTANT: DO NOT wrap LaTeX in any markdown formatting (bold **, italic _, etc.). Use $CO_2$ NOT **$CO_2$** or _$CO_2$_
+10. If you don't have the information to answer, say: "I don't see that information in the ${sourceReference}" or "The ${notMentionPhrasing} mention that"${multiSourceInstruction}
 6. Be conversational, helpful, and concise
 7. DO NOT end with generic phrases like "feel free to ask", "let me know if", or "if you have more questions" - just answer the question and stop naturally
 8. DO NOT end with similar generic phrases like "feel free to ask", "let me know if", "if there's any more information you need", "if you have any other questions", etc.
@@ -247,20 +253,22 @@ Formatting Requirements:
 - Make the response easy to scan and read
 
 Example of GOOD formatting with ${state.retrievedChunks.length} chunk(s) available:
-"Several factors can disturb photosynthesis, impacting its efficiency. Key ones include:
+"Photosynthesis can be summarized by the equation: $6CO_2 + 6H_2O \\rightarrow C_6H_{12}O_6 + 6O_2$ [1]. Several factors can disturb this process:
 
-1. **Light Intensity**: Insufficient light can reduce the rate of photosynthesis, as plants rely on light energy to drive the process ${state.retrievedChunks.length >= 1 ? '[1]' : ''}.
+1. **Light Intensity**: Insufficient light can reduce the rate of photosynthesis, as plants rely on light energy ${state.retrievedChunks.length >= 1 ? '[1]' : ''}.
 
-2. **Carbon Dioxide Concentration**: A low concentration of carbon dioxide can limit the rate of photosynthesis since it's one of the essential reactants in the process ${state.retrievedChunks.length >= 1 ? '[1]' : ''}."
+2. **Carbon Dioxide ($CO_2$) Concentration**: A low concentration of $CO_2$ can limit the rate of photosynthesis ${state.retrievedChunks.length >= 1 ? '[1]' : ''}."
 
-REMEMBER: You have ${state.retrievedChunks.length} chunk(s) in the context, so you can ONLY cite ${state.retrievedChunks.map((_, i) => `[${i + 1}]`).join(', ')}. DO NOT use any other citation numbers.
+REMEMBER: 
+- You have ${state.retrievedChunks.length} chunk(s) in the context, so you can ONLY cite ${state.retrievedChunks.map((_, i) => `[${i + 1}]`).join(', ')}. DO NOT use any other citation numbers.
+- ALWAYS use LaTeX for chemical formulas: $CO_2$ not CO2, $H_2O$ not H2O
 
-Example of GOOD citation:
-"He worked on DevConnect, a web chat application [1]."
+Example of GOOD citation and formatting:
+"The process uses $CO_2$ from the atmosphere [1] and water ($H_2O$) from the roots [1]."
 
-Example of BAD citation:
-"He worked on several projects. This information is detailed in the document."
-"He worked on DevConnect [1] and also built Footnation [2]." ← BAD if you only have 1 chunk!
+Example of BAD formatting:
+"The process uses CO2 from the atmosphere and water (H2O) from the roots." ← BAD: No LaTeX for formulas
+"He worked on several projects. This information is detailed in the document." ← BAD: No specific citations
 
 Answer:`;
     }

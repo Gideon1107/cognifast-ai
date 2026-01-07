@@ -2,6 +2,30 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 
+/* Custom scrollbar styling - always show thumb */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* gray-300 */
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* gray-400 */
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
 
 /* Custom Typography - NotebookLM Style */
 @layer base {
@@ -56,6 +80,7 @@
   display: inline-block !important;
   box-sizing: border-box !important;
   word-wrap: break-word !important;
+  vertical-align: -0.2em !important; /* Shift down to align with text */
 }
 
 /* Ensure LaTeX containers don't expand parent */

@@ -171,6 +171,10 @@ function renderInlineLatex(text: string, startKey: number): (string | ReactEleme
         parts.push(
           <span
             key={`inline-${key++}`}
+            style={{
+              display: 'inline',
+              verticalAlign: 'middle',
+            }}
             dangerouslySetInnerHTML={{ __html: html }}
           />
         );

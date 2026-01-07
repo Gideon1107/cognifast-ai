@@ -457,29 +457,63 @@ export function Chat() {
 
                                 const flushTextGroup = () => {
                                   if (currentTextGroup.length > 0) {
-                                    const combinedText = currentTextGroup.join('');
-                                    const hasLatex = /\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)|\\\(([^)]+?)\\\)/.test(combinedText);
+                                    let combinedText = currentTextGroup.join('');
+                                    
+                                    // Step 1: Protect LaTeX expressions by replacing them with placeholders
+                                    const latexPlaceholders: string[] = [];
+                                    let placeholderIndex = 0;
+                                    
+                                    // Match all LaTeX expressions (inline $...$, block $$...$$, \[...\], \(...\))
+                                    const latexRegex = /\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)|\\\(([^)]+?)\\\)/g;
+                                    
+                                    combinedText = combinedText.replace(latexRegex, (match) => {
+                                      // Remove any markdown formatting around the LaTeX
+                                      let cleaned = match;
+                                      // Remove leading/trailing underscores, asterisks, or combinations
+                                      cleaned = cleaned.replace(/^[*_]+/, '').replace(/[*_]+$/, '');
+                                      
+                                      const placeholder = `__LATEX_PLACEHOLDER_${placeholderIndex}__`;
+                                      latexPlaceholders.push(cleaned);
+                                      placeholderIndex++;
+                                      return placeholder;
+                                    });
+                                    
+                                    // Step 2: Now process markdown on text without LaTeX
                                     const withHeadings = formatHeadings(combinedText);
+                                    const withBold = formatBold(withHeadings);
+                                    
+                                    // Step 3: Restore LaTeX placeholders and process LaTeX
+                                    let processedText = withBold;
+                                    latexPlaceholders.forEach((latex, idx) => {
+                                      const placeholder = `__LATEX_PLACEHOLDER_${idx}__`;
+                                      processedText = processedText.replace(placeholder, latex);
+                                    });
+                                    
+                                    // Step 4: Check if we have LaTeX and render accordingly
+                                    const hasLatex = latexPlaceholders.length > 0;
                                     
                                     if (hasLatex) {
-                                      const latexParts = renderWithLatex(combinedText);
+                                      // Process LaTeX on the restored text
+                                      const latexParts = renderWithLatex(processedText);
                                       latexParts.forEach((lp, idx) => {
                                         if (typeof lp === 'string') {
                                           elements.push(
                                             <span 
                                               key={`text-group-${currentTextIndices[0]}-latex-${idx}`} 
-                                              dangerouslySetInnerHTML={{ __html: formatBold(lp) }} 
+                                              dangerouslySetInnerHTML={{ __html: lp }} 
                                             />
                                           );
                                         } else {
+                                          // LaTeX elements - render as-is
                                           elements.push(<span key={`text-group-${currentTextIndices[0]}-latex-${idx}`}>{lp}</span>);
                                         }
                                       });
                                     } else {
+                                      // No LaTeX - just render the processed markdown
                                       elements.push(
                                         <span 
                                           key={`text-group-${currentTextIndices[0]}`} 
-                                          dangerouslySetInnerHTML={{ __html: formatBold(withHeadings) }} 
+                                          dangerouslySetInnerHTML={{ __html: processedText }} 
                                         />
                                       );
                                     }
