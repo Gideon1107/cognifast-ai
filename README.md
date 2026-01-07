@@ -1,55 +1,134 @@
+<div align="center">
+
 # Cognifast AI
 
 **An Adaptive Learning Platform for Faster Learning and Knowledge Evaluation**
 
-Cognifast is an intelligent learning platform that helps users learn faster and evaluate their knowledge through AI-powered document analysis, interactive chat, and automated quiz generation.
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)](https://www.langchain.com/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)](https://langchain-ai.github.io/langgraph/)
 
+*Transform your learning experience with AI-powered document analysis, interactive chat, and intelligent knowledge evaluation*
+
+[Features](#-features) • [Demo](#-demo) • [Getting Started](#-getting-started) • [Documentation](#-documentation) • [Tech Stack](#-tech-stack)
+
+</div>
+
+---
+
+## Demo
+
+<div align="center">
 
 https://github.com/user-attachments/assets/8f046bff-4917-4d31-80a5-9722d1843294
 
+*Watch Cognifast AI in action - Upload sources, chat with AI, and explore your documents with intelligent citations*
 
-## 🎯 Overview
+</div>
 
-Cognifast transforms traditional learning by allowing users to upload documents and interact with an AI system that:
-- Analyzes and understands document content
-- Provides intelligent summaries and key insights
-- Enables interactive Q&A about document topics
-- Generates personalized quizzes to test knowledge
-- Automatically scores and provides feedback on user performance
+---
 
-## ✨ Features
+## Overview
 
-### 📄 Document Management
-- **Upload Documents**: Support for various document formats (PDF, DOC, DOCX, TXT)
-- **AI-Powered Processing**: Automatic document analysis and content extraction
-- **Document Summarization**: Get concise summaries and key points from uploaded documents
+Cognifast AI is an intelligent learning platform that revolutionizes how you interact with educational content. Upload documents or web pages, chat with an AI assistant that understands your content, get instant answers with source citations, and test your knowledge with AI-generated quizzes.
 
-### 💬 Interactive AI Chat
-- **Context-Aware Conversations**: Chat with AI about topics from your uploaded documents
-- **Intelligent Responses**: AI understands document context and provides relevant answers
-- **Topic Exploration**: Ask questions, seek clarifications, and dive deeper into document content
+### Key Capabilities
 
-### 📝 Quiz Generation & Assessment
-- **Automated Quiz Creation**: AI generates quizzes based on document content
-- **Multiple Question Types**: Multiple choice, true/false, and short answer questions
-- **Adaptive Difficulty**: Choose difficulty levels (easy, medium, hard)
-- **Automatic Scoring**: Instant feedback with detailed explanations
-- **Performance Analytics**: Track your learning progress and knowledge gaps
+- **Multi-Source Support**: Upload PDFs, Word documents, text files, or web page URLs
+- **Intelligent Chat**: Context-aware conversations grounded in your uploaded sources
+- **Source Citations**: See exactly which parts of your sources were used to answer questions
+- **Real-Time Streaming**: Watch AI responses generate token-by-token in real-time
+- **Quiz Generation**: Automated quiz creation from your source content (Coming Soon)
+- **LaTeX Support**: Perfect rendering of mathematical and chemical equations
+- **Markdown Formatting**: Beautifully formatted responses with headings, lists, and emphasis
 
-### 🎓 Adaptive Learning
-- **Personalized Experience**: Learning adapts to your needs and progress
-- **Knowledge Evaluation**: Comprehensive assessment of your understanding
-- **Learning Insights**: Identify areas that need more attention
+---
 
+## Features
+
+### Source Management
+
+- **Multiple File Types**: Support for PDF, DOC, DOCX, TXT files
+- **Web Page Support**: Upload and process web page URLs with automatic content extraction
+- **Multiple Upload**: Upload multiple sources before starting a conversation
+- **Smart Processing**: Automatic text extraction, chunking, and vector embedding generation
+- **Source Organization**: View all sources associated with each classroom
+
+### Interactive AI Chat
+
+- **Real-Time Streaming**: Token-by-token response generation via WebSocket
+- **Context-Aware Responses**: AI understands your uploaded sources and provides grounded answers
+- **Intelligent Routing**: Automatically determines when to retrieve source content vs. direct answers
+- **Multi-Stage Processing**: Visual feedback during AI processing stages
+  - "Looking for cues..." (Query routing)
+  - "Reviewing document..." (Content retrieval)
+  - "Generating response..." (Response generation)
+- **Quality Assurance**: Automatic response quality evaluation with retry mechanism
+
+### Source Citations
+
+- **Numbered Citations**: Clean `[1]`, `[2]` citation format in responses
+- **Hover Tooltips**: Hover over citations to see the exact source chunk text
+- **Source Attribution**: Know exactly which source and section informed each answer
+- **Visual Indicators**: Modern citation styling with smooth hover effects
+
+### Modern UI/UX
+
+- **NotebookLM-Inspired Design**: Clean, modern interface inspired by Google's NotebookLM
+- **3-Column Layout**: 
+  - **Sources (20%)**: View all sources with type indicators
+  - **Chat (50%)**: Main conversation interface
+  - **Studio (30%)**: Reserved for future features (quizzes, analytics)
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
+- **Smooth Animations**: Polished user experience with gradient loaders
+- **Auto-Scroll**: Automatically scrolls to latest messages
+- **Persistent State**: Conversations and messages persist across page reloads
+
+### Conversation Management
+
+- **Dashboard View**: See all your classrooms (conversations) in one place
+- **Custom Titles**: Name your classrooms when creating them
+- **Edit & Delete**: Manage conversation titles and remove conversations
+- **Skeleton Loading**: Smooth loading states to prevent UI flicker
+- **Recent Activity**: Conversations sorted by creation date
+
+### Quiz Generation (Coming Soon)
+
+- **Automated Quiz Creation**: AI generates quizzes based on your uploaded source content
+- **Multiple Question Types**: 
+  - Multiple choice questions with 4 options
+  - True/False questions
+  - Short answer questions
+- **Adaptive Difficulty Levels**: Choose from Easy, Medium, or Hard difficulty
+- **Source-Grounded Questions**: All questions are based on your uploaded sources
+- **Automatic Grading**: Instant feedback with detailed explanations
+- **Performance Tracking**: Track your quiz attempts and scores
+- **Knowledge Gap Analysis**: Identify areas that need more attention
+- **Studio Panel Integration**: Access quizzes from the Studio panel in the chat interface
+
+### Advanced Formatting
+
+- **LaTeX Rendering**: Perfect display of mathematical and chemical equations
+  - Block equations: `\[...\]` or `$$...$$`
+  - Inline equations: `$...$` or `\(...\)`
+- **Markdown Support**: 
+  - **Bold text**: `**text**`
+  - **Headings**: `#`, `##`, `###`
+  - **Numbered lists**: `1.`, `2.`, `3.`
+  - **Paragraphs**: Automatic paragraph breaks
+
+---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
 - **Node.js** 18+ and npm
-- **PostgreSQL**  - for database
-- **Supabase-PgVector** - (for document embeddings)
-- **AI API Key** - OpenAI or Anthropic API key
+- **PostgreSQL** database (via Supabase)
+- **Supabase Account** with PgVector extension enabled
+- **OpenAI API Key** (for GPT-4o and GPT-4o-mini)
 
 ### Installation
 
@@ -74,26 +153,45 @@ Cognifast transforms traditional learning by allowing users to upload documents 
    ```
 
 3. **Configure environment variables**
-   
+
    Create a `.env` file in the `backend` directory:
    ```env
    PORT=3000
    NODE_ENV=development
    
-   # Database
+   # Database (Supabase)
    SUPABASE_URL=your-supabase-url
    SUPABASE_PASSWORD=your-supabase-password
    SUPABASE_KEY=your-supabase-service-key
-
    
-   # AI Service
+   # AI Service (OpenAI)
    OPENAI_PROJECT_ID=your-openai-project-id
    OPENAI_API_KEY=your-openai-api-key
    ```
 
-4. **Start the development servers**
+   Create a `.env` file in the `frontend` directory:
+   ```env
+   VITE_API_BASE_URL=http://localhost:3000/api
+   VITE_WS_URL=http://localhost:3000
+   ```
+
+4. **Set up the database**
+
+   Run the SQL scripts on your Supabase database in the following order:
+   
+   **Initial Schema Setup:**
+   - `backend/src/db/schema.sql` - Base database schema (run this first for new databases)
+   
+   **Migrations (if needed):**
+   - `backend/src/db/migrations/003_rename_documents_to_sources.sql` - Main schema migration
+   - `backend/src/db/migrations/003c_update_vector_search_functions.sql` - Vector search functions
+   - `backend/src/db/migrations/003d_fix_file_type_constraint.sql` - Constraint fixes
+   
+   > **Note**: For a fresh database, start with `schema.sql`. If you're migrating from an older version, run the migration files in order.
+
+5. **Start the development servers**
    ```bash
-   # From root directory
+   # From root directory (runs both frontend and backend)
    npm run dev
    ```
    
@@ -108,133 +206,152 @@ Cognifast transforms traditional learning by allowing users to upload documents 
    npm run dev
    ```
 
-5. **Access the application**
+6. **Access the application**
    - Frontend: http://localhost:5173
    - Backend API: http://localhost:3000
 
-## 📖 Usage
+---
 
-### 1. Getting Started
-- Visit the **Landing Page** to learn about Cognifast AI
-- Click **"Try Cognifast AI"** to navigate to the Dashboard
-- Or click **"Get Started"** in the navigation bar
+## 📖 Usage Guide
 
-### 2. Dashboard - My Classrooms
-- View all your **classrooms** (conversations) in one place
-- See recent classrooms with document information
-- Click on any classroom card to open it in the Chat interface
-- Click **"Create new"** button to start a new classroom
+### 1. Create a New Classroom
 
-### 3. Create a New Classroom
-- Click **"Create new"** from the Dashboard
-- You'll be taken to the Chat interface with an upload modal
-- **Upload a document**:
-  - Drag and drop a file, or click to browse
-  - Supported formats: PDF, DOCX, TXT (max 10MB)
-  - Wait for upload and processing to complete
-- Once uploaded, the modal closes and you're in the Chat UI with your document
+1. Navigate to the **Dashboard** from the landing page
+2. Click **"Create new"** button
+3. You'll be taken to the Chat interface with an upload modal
+4. **Upload sources**:
+   - **File Upload**: Drag and drop files or click to browse
+     - Supported formats: PDF, DOC, DOCX, TXT (max 10MB)
+   - **URL Upload**: Switch to "Add URL" tab and paste a web page URL
+   - Upload multiple sources before starting
+5. Enter a **Classroom Name** (optional, defaults to "New Classroom")
+6. Click **"Start Classroom"** to begin
 
-### 4. Chat Interface
+### 2. Chat Interface
+
 The Chat interface features a **3-column layout**:
 
-- **Sources (Left - 15%)**: 
-  - Displays the document(s) associated with the current classroom
-  - Shows document names and metadata
+#### Sources Panel (Left - 20%)
+- Displays all sources (files and URLs) associated with the classroom
+- Shows source type icons (file icon for documents, globe icon for URLs)
+- Modern card-style design with source names and metadata
 
-- **Chat (Center - 55%)**:
-  - Main conversation area
-  - Type your questions in the input field
-  - Send messages to get AI responses
-  - **Real-time streaming**: Responses appear token-by-token as the AI generates them
-  - **Loading states**: See progress messages like "Looking for cues...", "Reviewing document...", "Generating response..."
-  - Messages are automatically saved and persist across page reloads
+#### Chat Panel (Center - 50%)
+- **Main conversation area** with message history
+- **Input field** at the bottom for typing questions
+- **Send button** (arrow icon) to submit messages
+- **Real-time streaming**: Watch AI responses generate token-by-token
+- **Loading indicators**: See progress during AI processing
+- **Citations**: Hover over numbered citations `[1]`, `[2]` to see source chunks
+- **Auto-scroll**: Automatically scrolls to latest messages
 
-- **Studio (Right - 30%)**:
-  - Reserved for future features (quizzes, analytics, etc.)
-  - Currently displays placeholder content
+#### Studio Panel (Right - 30%)
+- **Quiz Generation**: Create quizzes from your source content (Coming Soon)
+  - Select difficulty level (Easy, Medium, Hard)
+  - Generate questions based on your sources
+  - Take quizzes and get instant feedback
+- **Analytics & Insights**: Track your learning progress (Coming Soon)
+- **Document Summaries**: AI-powered summaries of your sources (Coming Soon)
 
-### 5. Chatting with AI
-- Type your question in the chat input
-- Press **Enter** or click **Send** to submit
-- The AI will:
-  1. **Route** your query (determine if document retrieval is needed)
-  2. **Retrieve** relevant document chunks (if needed)
-  3. **Generate** a response with real-time token streaming
-  4. **Evaluate** response quality (may retry if quality is poor)
-- Responses are **context-aware** and grounded in your uploaded documents
-- Bold text and lists in AI responses are automatically formatted
+### 3. Chatting with AI
 
-### 6. Documents Page
-- Navigate to **Documents** from the navigation bar
-- Document management features coming soon
+1. **Type your question** in the chat input field
+2. **Press Enter** or click the **Send button** (arrow icon)
+3. The AI will process your query through multiple stages:
+   - **Routing**: Determines if source retrieval is needed
+   - **Retrieval**: Finds relevant chunks from your sources (if needed)
+   - **Generation**: Creates a response with real-time streaming
+   - **Quality Check**: Evaluates response quality (may retry if needed)
+4. **View citations**: Hover over citation numbers to see the source text used
+5. **Continue the conversation**: Ask follow-up questions for deeper exploration
 
-### 7. Navigation
-- Use the **Navbar** to navigate between:
-  - **Dashboard**: View all classrooms
-  - **Documents**: Manage documents (coming soon)
-  - **Chat**: Direct access to chat interface
+### 4. Managing Classrooms
+
+#### Dashboard
+- View all your classrooms in a grid layout
+- See classroom titles, source counts, and creation dates
+- Click any classroom card to open it in the Chat interface
+
+#### Edit Classroom Title
+1. Click the **three-dot menu** (⋮) on any classroom card
+2. Select **"Edit"**
+3. Enter a new title in the dialog
+4. Click **"Save"**
+
+#### Delete Classroom
+1. Click the **three-dot menu** (⋮) on any classroom card
+2. Select **"Delete"**
+3. Confirm deletion in the dialog
+
+### 5. Quiz Generation (Coming Soon)
+
+1. **Open Studio Panel**: Navigate to a classroom and view the Studio panel (right side)
+2. **Generate Quiz**: 
+   - Click **"Generate Quiz"** button
+   - Select difficulty level (Easy, Medium, Hard)
+   - Choose number of questions
+   - Click **"Create Quiz"**
+3. **Take Quiz**: 
+   - Answer questions one by one
+   - View progress and timer
+   - Submit when complete
+4. **View Results**: 
+   - See your score immediately
+   - Review correct/incorrect answers
+   - Read detailed explanations
+   - Identify knowledge gaps
+
+---
 
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **React 18** - UI library
-- **TypeScript** - Type safety
-- **Vite** - Build tool
-- **React Router** - Routing
-- **Axios** - HTTP client
+
+| Technology | Purpose |
+|------------|---------|
+| **React 18** | UI library with hooks and modern patterns |
+| **TypeScript** | Type safety and better developer experience |
+| **Vite** | Fast build tool and dev server |
+| **React Router DOM** | Client-side routing |
+| **Tailwind CSS** | Utility-first CSS framework |
+| **Zustand** | Lightweight global state management with persistence |
+| **Socket.io Client** | WebSocket client for real-time communication |
+| **React Query** | Data fetching and caching |
+| **Axios** | HTTP client for API requests |
+| **KaTeX** | LaTeX rendering for mathematical equations |
 
 ### Backend
-- **Node.js** - Runtime
-- **Express** - Web framework
-- **TypeScript** - Type safety  
-- **Supabase** - Authentication
-- **RecursiveCharacterTextSplitter** - Text chunking
-- **OpenAIEmbeddings** - Document embeddings
-- **Supabase-PostgreSQL** - Database
-- **Supabase-PgVector** - Document embeddings similarity search
 
-### Shared
-- **TypeScript Types** - Shared type definitions between frontend and backend
-- **Path Aliases** - `@shared` for clean imports across the monorepo
+| Technology | Purpose |
+|------------|---------|
+| **Node.js** | JavaScript runtime |
+| **Express** | Web framework for RESTful APIs |
+| **TypeScript** | Type safety and better developer experience |
+| **Socket.io** | WebSocket server for real-time streaming |
+| **LangChain** | AI framework for building LLM applications |
+| **LangGraph** | Stateful multi-agent workflow orchestration |
+| **OpenAI API** | GPT-4o-mini (routing) and GPT-4o (generation) |
+| **Supabase** | PostgreSQL database with PgVector extension |
+| **RecursiveCharacterTextSplitter** | Text chunking for embeddings |
+| **OpenAIEmbeddings** | Vector embedding generation |
+| **Cheerio** | Web scraping and HTML parsing |
 
 ### Database
-- **ostgreSQL** - Database
-- **Redis** - Caching
-- **LangChain** - AI/ML framework
-- **LangGraph** - Stateful agent orchestration
-- **Supabase-pgvector** - Vector Database
 
-### AI/ML
-- **OpenAI/Anthropic** - LLM APIs
-- **LangChain Agents** - AI agent orchestration
-- **LangGraph** - Stateful multi-actor agent workflows
+| Technology | Purpose |
+|------------|---------|
+| **PostgreSQL** | Relational database |
+| **Supabase PgVector** | Vector similarity search for RAG |
+| **Custom RPC Functions** | Efficient vector search queries |
 
+### Architecture
 
+- **Monorepo Structure**: Shared types between frontend and backend
+- **Multi-Agent System**: Router, Retrieval, Generator, and Quality agents
+- **WebSocket Streaming**: Real-time token-by-token response delivery
+- **Vector Search**: Semantic similarity search for document retrieval
 
-
-## 🧪 Development
-
-### Running Tests
-```bash
-# Frontend tests
-cd frontend
-npm test
-
-# Backend tests
-cd backend
-npm test
-```
-
-### Building for Production
-```bash
-# Build frontend
-cd frontend
-npm run build
-
-# Build backend
-cd backend
-npm run build
-```
+---
 
 ## 📁 Project Structure
 
@@ -245,52 +362,40 @@ Cognifast-ai/
 │   │   ├── agents/                 # LangGraph agents
 │   │   │   └── chat/
 │   │   │       ├── router.agent.ts      # Routes queries (retrieve/direct/clarify)
-│   │   │       ├── retrieval.agent.ts   # Retrieves relevant document chunks
+│   │   │       ├── retrieval.agent.ts   # Retrieves relevant source chunks
 │   │   │       ├── generator.agent.ts   # Generates AI responses (streaming)
-│   │   │       └── quality.agent.ts      # Evaluates response quality
+│   │   │       └── quality.agent.ts     # Evaluates response quality
 │   │   ├── controllers/            # Request handlers
 │   │   │   ├── chat.controller.ts
-│   │   │   └── document.controller.ts
+│   │   │   └── source.controller.ts
 │   │   ├── db/                     # Database configuration
 │   │   │   ├── dbConnection.ts
 │   │   │   ├── schema.sql          # Database schema
-│   │   │   ├── vector_search_function.sql  # Vector search RPC function
+│   │   │   ├── vector_search_function.sql
 │   │   │   └── migrations/         # Database migrations
 │   │   ├── graphs/                 # LangGraph state graphs
 │   │   │   └── chat.graph.ts       # Chat workflow orchestration
-│   │   ├── middleware/             # Express middleware
-│   │   │   └── upload.middleware.ts
 │   │   ├── routes/                 # API route definitions
 │   │   │   ├── chat.routes.ts
-│   │   │   └── document.routes.ts
+│   │   │   └── source.routes.ts
 │   │   ├── services/               # Business logic
 │   │   │   ├── chat.service.ts           # Conversation management
 │   │   │   ├── chat-stream.service.ts    # WebSocket streaming orchestration
-│   │   │   ├── document.service.ts      # Document processing
-│   │   │   ├── embedding.service.ts     # Embedding generation
+│   │   │   ├── source.service.ts         # Source processing (files & URLs)
+│   │   │   ├── embedding.service.ts      # Embedding generation
 │   │   │   ├── retrieval.service.ts     # Vector search
-│   │   │   └── storage.service.ts       # File storage
+│   │   │   └── web-scraper.service.ts   # Web page content extraction
 │   │   ├── sockets/                # WebSocket handlers
 │   │   │   └── chat.socket.ts      # Socket.io event handlers
-│   │   ├── types/                  # Backend-only types (internal)
-│   │   │   ├── chat.types.ts
-│   │   │   ├── document.types.ts
-│   │   │   ├── quiz.types.ts
-│   │   │   └── summary.types.ts
-│   │   ├── utils/                  # Utility functions
-│   │   │   └── logger.ts           # Logging utility
 │   │   └── index.ts                # Application entry point
-│   ├── dist/                       # Compiled JavaScript (generated)
-│   ├── uploads/                    # Temporary file storage
-│   ├── package.json
-│   ├── tsconfig.json               # TypeScript config with @shared path alias
 │   └── README.md                   # Backend documentation
 │
 ├── frontend/                       # React frontend
 │   ├── src/
 │   │   ├── components/             # React components
 │   │   │   ├── chat/
-│   │   │   │   └── DocumentUploadModal.tsx
+│   │   │   │   ├── SourceUploadModal.tsx
+│   │   │   │   └── CitationTooltip.tsx
 │   │   │   ├── landing/
 │   │   │   │   ├── FeatureCard.tsx
 │   │   │   │   └── HeroSection.tsx
@@ -304,72 +409,171 @@ Cognifast-ai/
 │   │   ├── pages/                  # Page components
 │   │   │   ├── Chat.tsx            # Chat interface
 │   │   │   ├── Dashboard.tsx       # Dashboard/home page
-│   │   │   ├── Documents.tsx        # Documents page
+│   │   │   ├── Documents.tsx       # Documents page
 │   │   │   └── Landing.tsx         # Landing page
 │   │   ├── store/                  # State management (Zustand)
 │   │   │   ├── index.ts            # Store exports
 │   │   │   ├── types.ts            # Store type definitions
 │   │   │   └── useChatStore.ts     # Chat store implementation
 │   │   ├── utils/                  # Utility functions
-│   │   │   └── logger.ts           # Frontend logging
-│   │   ├── App.tsx                 # Root component
-│   │   ├── main.tsx                # Application entry point
+│   │   │   ├── logger.ts           # Frontend logging
+│   │   │   └── latex.tsx          # LaTeX rendering utility
 │   │   └── index.css               # Global styles
-│   ├── public/                     # Static assets
-│   ├── package.json
-│   ├── tsconfig.json               # TypeScript config with @shared path alias
-│   ├── vite.config.ts              # Vite configuration
 │   └── README.md                   # Frontend documentation
 │
 ├── shared/                         # Shared types and constants
 │   ├── types/
-│   │   ├── entities.ts             # Domain models (Message, Conversation, Document)
+│   │   ├── entities.ts             # Domain models (Message, Conversation, Source)
 │   │   ├── api.ts                  # API request/response types
 │   │   └── index.ts                # Central export
-│   ├── constants/                  # Shared constants
-│   ├── package.json
 │   └── README.md                   # Documentation for shared types
 │
 ├── ARCHITECTURE_FLOW.md            # Architecture flow diagram
-├── .gitignore
 └── README.md                       # This file
 ```
 
-### Type Organization
+---
 
-**Shared Types** (`shared/types/`):
-- API contracts (requests/responses)
-- Domain entities used by both frontend and backend
-- Imported using `@shared/types` in both frontend and backend
+## 🔄 How It Works
 
-**Backend-Only Types** (`backend/src/types/`):
-- Internal service layer types (`SendMessageResult`)
-- LangGraph state types (`ConversationState`)
-- Agent-specific types (`RouterDecision`, `ResponseQuality`)
+### Architecture Flow
 
-## 🐳 Docker
+1. **User uploads sources** (files or URLs) → Backend processes and generates embeddings
+2. **User sends a message** → Frontend sends via WebSocket
+3. **Router Agent** → Determines if source retrieval is needed
+4. **Retrieval Agent** (if needed) → Finds relevant chunks using vector similarity search
+5. **Generator Agent** → Creates response with real-time token streaming
+6. **Quality Agent** → Evaluates response quality (may trigger retry)
+7. **Frontend** → Displays streaming response with citations
+
+See [ARCHITECTURE_FLOW.md](./ARCHITECTURE_FLOW.md) for detailed flow diagrams.
+
+### Key Components
+
+- **Multi-Agent System**: LangGraph orchestrates Router, Retrieval, Generator, and Quality agents
+- **Vector Search**: PgVector enables semantic similarity search across source chunks
+- **Real-Time Streaming**: WebSocket delivers tokens as they're generated
+- **State Management**: Zustand with persistence for conversations and messages
+- **Citation System**: Numbered citations map to source chunks with hover tooltips
+
+---
+
+## 🧪 Development
+
+### Running the Application
 
 ```bash
-# Start all services
-docker-compose up -d
+# Start both frontend and backend
+npm run dev
 
-# Stop all services
-docker-compose down
+# Or run separately
+cd backend && npm run dev
+cd frontend && npm run dev
 ```
 
-## 📄 License
+### Building for Production
 
-MIT License
+```bash
+# Build frontend
+cd frontend
+npm run build
+
+# Build backend
+cd backend
+npm run build
+```
+
+### Database Migrations
+
+**For a new database:**
+1. Run `backend/src/db/schema.sql` first to create the base schema
+
+**For existing databases (migrations):**
+1. `003_rename_documents_to_sources.sql`
+2. `003c_update_vector_search_functions.sql`
+3. `003d_fix_file_type_constraint.sql` (if needed)
+
+---
+
+## 🚧 Roadmap
+
+### Coming Soon
+
+#### 📝 Quiz Generation (In Development)
+- [ ] **Quiz Creation UI**: Generate quizzes from Studio panel
+  - Select difficulty level (Easy, Medium, Hard)
+  - Choose number of questions
+  - Generate questions based on source content
+- [ ] **Quiz Taking Interface**: Interactive quiz experience
+  - Multiple choice question display
+  - True/False question interface
+  - Short answer input fields
+  - Timer and progress tracking
+- [ ] **Automatic Grading**: Instant feedback system
+  - Correct/incorrect answer indicators
+  - Detailed explanations for each question
+  - Source citations for answers
+- [ ] **Quiz Results & Analytics**: Performance tracking
+  - Score calculation and display
+  - Knowledge gap identification
+  - Quiz attempt history
+  - Performance trends over time
+
+#### 📊 Other Upcoming Features
+- [ ] **Document Summarization**: AI-powered summaries of uploaded sources
+- [ ] **Performance Analytics Dashboard**: Track learning progress and knowledge gaps
+- [ ] **User Authentication**: Secure user accounts and sessions
+- [ ] **Export Conversations**: Download chat history as PDF or text
+- [ ] **Dark Mode**: Theme switching for better accessibility
+- [ ] **Mobile App**: Native mobile experience
+
+### Under Consideration
+
+- [ ] Multi-language support
+- [ ] Collaborative classrooms
+- [ ] Advanced search across all conversations
+- [ ] Integration with learning management systems
+
+---
+
+## 📚 Documentation
+
+- [Frontend README](./frontend/README.md) - Frontend architecture and features
+- [Backend README](./backend/README.md) - Backend API and services
+- [Architecture Flow](./ARCHITECTURE_FLOW.md) - System architecture diagrams
+
+---
 
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 📧 Contact
-
-For questions or support, please open an issue on GitHub.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ---
 
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+## 📧 Contact & Support
+
+For questions, issues, or support:
+- Open an issue on [GitHub Issues](https://github.com/Gideon1107/Cognifast-ai/issues)
+- Check the [Documentation](./docs) for detailed guides
+
+---
+
+<div align="center">
+
 **Built with ❤️ for faster learning**
 
+[⬆ Back to Top](#-cognifast-ai)
+
+</div>
