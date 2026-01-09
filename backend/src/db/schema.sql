@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS sources (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     filename VARCHAR(255) NOT NULL,
     original_name VARCHAR(255) NOT NULL,
-    file_type VARCHAR(10) NOT NULL CHECK (file_type IN ('pdf', 'docx', 'doc', 'txt', 'url')),
+    file_type VARCHAR(10) NOT NULL,
     file_size BIGINT NOT NULL,
     file_path TEXT NOT NULL,
     source_url TEXT, -- Original URL for web page sources
@@ -14,11 +14,15 @@ CREATE TABLE IF NOT EXISTS sources (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Add file_type constraint
+ALTER TABLE sources ADD CONSTRAINT sources_file_type_check 
+    CHECK (file_type IN ('pdf', 'docx', 'doc', 'txt', 'url'));
+
 -- Create index for faster queries
 CREATE INDEX IF NOT EXISTS idx_sources_created_at ON sources(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sources_file_type ON sources(file_type);
 
--- Enable Row Level Security (optional, for later when adding auth)
+-- Enable Row Level Security 
 -- ALTER TABLE sources ENABLE ROW LEVEL SECURITY;
 
 -- Create a function to update updated_at timestamp
