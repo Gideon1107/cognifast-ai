@@ -154,7 +154,7 @@ Cognifast AI is an intelligent learning platform that revolutionizes how you int
    ```
 
 3. **Configure environment variables**
-
+   
    Create a `.env` file in the `backend` directory:
    ```env
    PORT=3000
@@ -547,13 +547,165 @@ npm run build
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! We're excited to have you contribute to Cognifast AI. This guide will help you get started.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+### Getting Started
+
+1. **Fork the repository**
+   - Click the "Fork" button on the top right of the repository page
+   - This creates a copy of the repository under your GitHub account
+
+2. **Clone your fork** (not the original repository)
+   ```bash
+   git clone https://github.com/YOUR-USERNAME/Cognifast-ai.git
+   cd Cognifast-ai
+   ```
+
+3. **Add upstream remote** (to sync with the original repository)
+   ```bash
+   git remote add upstream https://github.com/Gideon1107/Cognifast-ai.git
+   ```
+
+4. **Install dependencies**
+   ```bash
+   # Install root dependencies
+   npm install
+   
+   # Install frontend dependencies
+   cd frontend
+   npm install
+   
+   # Install backend dependencies
+   cd ../backend
+   npm install
+   ```
+
+5. **Set up environment variables**
+   - Follow the [Getting Started](#-getting-started) section to configure your `.env` files
+   - Make sure you have a Supabase database and OpenAI API key set up
+
+### Development Workflow
+
+1. **Create a feature branch**
+   ```bash
+   git checkout -b feature/your-feature-name
+   # or
+   git checkout -b fix/bug-description
+   ```
+
+2. **Make your changes**
+   - Write clean, readable code
+   - Follow the existing code style and patterns
+   - Add comments for complex logic
+   - Update documentation if needed
+
+3. **Test your changes**
+   - Test the frontend: `cd frontend && npm run dev`
+   - Test the backend: `cd backend && npm run dev`
+   - Ensure all existing functionality still works
+   - Test edge cases and error handling
+
+4. **Commit your changes**
+   ```bash
+   git add .
+   git commit -m "feat: commit message"
+   # or
+   git commit -m "fix: commit message"
+   ```
+
+   **Commit message guidelines:**
+   - Use conventional commit format: `type: description`
+   - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+   - Keep descriptions concise and clear
+   - Reference issue numbers if applicable: `feat: add dark mode (#21)`
+
+5. **Keep your fork up to date**
+   ```bash
+   # Fetch latest changes from upstream
+   git fetch upstream
+   
+   # Switch to main branch
+   git checkout main
+   
+   # Merge upstream changes
+   git merge upstream/main
+   
+   # Push to your fork
+   git push origin main
+   
+   # Switch back to your feature branch
+   git checkout feature/your-feature-name
+   
+   # Rebase on latest main (optional, keeps history clean)
+   git rebase main
+   ```
+
+6. **Push to your fork**
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+7. **Open a Pull Request**
+   - Go to the original repository on GitHub
+   - Click "New Pull Request"
+   - Select your fork and branch
+   - Fill out the PR template with:
+     - Description of changes
+     - Related issue number (if applicable)
+     - Screenshots (for UI changes)
+     - Testing instructions
+
+### Code Style Guidelines
+
+- **TypeScript**: Use TypeScript for all new code
+- **Naming**: Use descriptive variable and function names
+- **Formatting**: Code is formatted automatically (consider adding Prettier)
+- **Imports**: Group imports (external, internal, relative)
+- **Comments**: Add comments for complex logic, not obvious code
+- **Error Handling**: Always handle errors appropriately
+- **Type Safety**: Avoid `any` types; use proper TypeScript types
+
+### Frontend Guidelines
+
+- Use functional components with hooks
+- Follow React best practices (avoid unnecessary re-renders)
+- Use Tailwind CSS for styling
+- Maintain responsive design
+- Ensure accessibility (keyboard navigation, ARIA labels)
+
+### Backend Guidelines
+
+- Follow RESTful API conventions
+- Add proper error handling and validation
+- Use TypeScript types from `shared/types`
+- Add logging for debugging (use the logger utility)
+- Document complex algorithms or business logic
+
+### Testing
+
+- Test your changes thoroughly before submitting
+- Test edge cases and error scenarios
+- Ensure existing functionality isn't broken
+- (Future) Add unit tests for new features
+
+### Pull Request Guidelines
+
+- **One feature per PR**: Keep PRs focused and manageable
+- **Link issues**: Reference related issues in your PR description
+- **Update documentation**: Update README or docs if needed
+- **Screenshots**: Include screenshots for UI changes
+- **Be responsive**: Address review comments promptly
+- **Keep PRs updated**: Rebase or merge main branch if conflicts arise
+
+### Getting Help
+
+- Check existing [GitHub Issues](https://github.com/Gideon1107/Cognifast-ai/issues)
+- Open a new issue for bugs or feature requests
+- Ask questions in issue comments or discussions
+
+### Recognition
+
+Contributors will be recognized in the project. Thank you for helping make Cognifast AI better! 🎉
 
 ---
 
