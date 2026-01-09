@@ -182,13 +182,14 @@ Cognifast AI is an intelligent learning platform that revolutionizes how you int
    
    **Initial Schema Setup:**
    - `backend/src/db/schema.sql` - Base database schema (run this first for new databases)
+   - `backend/src/db/vector_search_function.sql` - Vector search function for RAG (required for chat to work)
    
    **Migrations (if needed):**
    - `backend/src/db/migrations/003_rename_documents_to_sources.sql` - Main schema migration
    - `backend/src/db/migrations/003c_update_vector_search_functions.sql` - Vector search functions
    - `backend/src/db/migrations/003d_fix_file_type_constraint.sql` - Constraint fixes
    
-   > **Note**: For a fresh database, start with `schema.sql`. If you're migrating from an older version, run the migration files in order.
+   > **Note**: For a fresh database, start with `schema.sql` and `vector_search_function.sql`. If you're migrating from an older version, run the migration files in order.
 
 5. **Start the development servers**
    ```bash
