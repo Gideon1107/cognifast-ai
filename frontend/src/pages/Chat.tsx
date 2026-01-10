@@ -10,9 +10,9 @@ import { Navbar } from '../components/Navbar';
 import { SourceUploadModal } from '../components/chat/SourceUploadModal';
 import { CitationTooltip } from '../components/chat/CitationTooltip';
 import { FileText, Sparkles, BookOpen, ClipboardList, BarChart, Globe, PanelRight, PanelLeft, ArrowRight } from 'lucide-react';
-import { 
-  getConversation, 
-  startConversation 
+import {
+  getConversation,
+  startConversation
 } from '../lib/api';
 import { useChatStore } from '../store';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -26,6 +26,89 @@ export function Chat() {
   const [message, setMessage] = useState('');
   const [uploadInProgress, setUploadInProgress] = useState(false);
   const [openCitation, setOpenCitation] = useState<{ source: MessageSource; position: { x: number; y: number }; placement: 'above' | 'below' } | null>(null);
+
+  // Panel resizing state
+  const [widths, setWidths] = useState<{ sources: number; chat: number; studio: number }>(() => {
+    const saved = localStorage.getItem('chat-panel-widths');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse widths from localStorage', e);
+      }
+    }
+    return { sources: 20, chat: 50, studio: 30 };
+  });
+
+  const resizingRef = useRef<'sources' | 'studio' | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const startResizing = (panel: 'sources' | 'studio') => {
+    resizingRef.current = panel;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
+
+  const stopResizing = () => {
+    resizingRef.current = null;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizingRef.current || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const containerWidth = containerRect.width;
+      const mouseX = e.clientX - containerRect.left;
+      const mouseXPercent = (mouseX / containerWidth) * 100;
+
+      const MIN_SOURCES = 15;
+      const MIN_CHAT = 30;
+      const MIN_STUDIO = 20;
+
+      setWidths((prev) => {
+        let newWidths = { ...prev };
+
+        if (resizingRef.current === 'sources') {
+          const newSourcesWidth = Math.max(MIN_SOURCES, Math.min(mouseXPercent, 100 - MIN_CHAT - prev.studio));
+          newWidths = {
+            ...prev,
+            sources: newSourcesWidth,
+            chat: 100 - newSourcesWidth - prev.studio,
+          };
+        } else if (resizingRef.current === 'studio') {
+          const newStudioWidth = Math.max(MIN_STUDIO, Math.min(100 - mouseXPercent, 100 - MIN_CHAT - prev.sources));
+          newWidths = {
+            ...prev,
+            studio: newStudioWidth,
+            chat: 100 - prev.sources - newStudioWidth,
+          };
+        }
+
+        return newWidths;
+      });
+    };
+
+    const handleMouseUp = () => stopResizing();
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('chat-panel-widths', JSON.stringify(widths));
+  }, [widths]);
+
+  const resetWidths = () => {
+    setWidths({ sources: 20, chat: 50, studio: 30 });
+  };
 
   // Zustand store
   const {
@@ -66,7 +149,7 @@ export function Chat() {
   useEffect(() => {
     if (conversationData?.success && conversationData.conversation && conversationId) {
       setConversation(conversationData.conversation);
-      
+
       // Sync messages to store
       if (conversationData.messages && conversationData.messages.length > 0) {
         addMessages(conversationId, conversationData.messages);
@@ -130,11 +213,11 @@ export function Chat() {
       if (response.success && response.conversation) {
         // Add conversation to store
         setConversation(response.conversation);
-        
+
         if (response.messages && response.messages.length > 0) {
           addMessages(response.conversation.id, response.messages);
         }
-        
+
         navigate(`/chat/${response.conversation.id}`, { replace: true });
       }
     } catch (error) {
@@ -189,7 +272,7 @@ export function Chat() {
       // Add citation
       const citationNumber = parseInt(match[1], 10);
       const sourceIndex = citationNumber - 1; // [1] -> sources[0], [2] -> sources[1], etc.
-      
+
       if (sourceIndex >= 0 && sourceIndex < sources.length) {
         const source = sources[sourceIndex];
         // Validate that source has required data
@@ -247,10 +330,10 @@ export function Chat() {
     const tooltipHeight = 400;
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
-    
+
     // Determine placement: prefer below, but use above if not enough space
-    const placement: 'above' | 'below' = spaceBelow >= tooltipHeight ? 'below' : 
-                                          spaceAbove >= tooltipHeight ? 'above' : 
+    const placement: 'above' | 'below' = spaceBelow >= tooltipHeight ? 'below' :
+                                          spaceAbove >= tooltipHeight ? 'above' :
                                           spaceBelow >= spaceAbove ? 'below' : 'above';
 
     // Add a slight delay before showing tooltip for smooth transition
@@ -259,7 +342,7 @@ export function Chat() {
         source,
         position: {
           x: rect.left,
-          y: placement === 'below' 
+          y: placement === 'below'
             ? rect.bottom + 8  // Position below citation with 8px gap
             : rect.top - 8,    // Position above citation with 8px gap (will be used as bottom offset)
         },
@@ -344,9 +427,12 @@ export function Chat() {
       />
 
       {/* 3-Column Layout */}
-      <div className="flex-1 flex overflow-hidden justify-between px-4 pt-2 pb-4">
+      <div ref={containerRef} className="flex-1 flex overflow-hidden px-4 pt-2 pb-4">
         {/* Left Sidebar - Sources */}
-        <div className="flex-[0_0_19.5%] bg-white flex flex-col border border-gray-100 rounded-xl">
+        <div
+          style={{ flex: `0 0 ${widths.sources}%`, minWidth: 0 }}
+          className="bg-white flex flex-col border border-gray-100 rounded-xl overflow-hidden"
+        >
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-600">Sources</h2>
             <button
@@ -398,8 +484,20 @@ export function Chat() {
           </div>
         </div>
 
+        {/* Resize Handle Sources-Chat */}
+        <div
+          onMouseDown={() => startResizing('sources')}
+          onDoubleClick={resetWidths}
+          className="w-1 hover:bg-blue-400/50 cursor-col-resize transition-colors shrink-0 flex items-center justify-center group"
+        >
+          <div className="w-0.5 h-8 bg-gray-200 group-hover:bg-blue-400 rounded-full transition-colors" />
+        </div>
+
         {/* Center - Chat Interface */}
-        <div className="flex-[0_0_49.5%] flex flex-col bg-white border border-gray-100 rounded-xl">
+        <div
+          style={{ flex: `0 0 ${widths.chat}%`, minWidth: 0 }}
+          className="flex flex-col bg-white border border-gray-100 rounded-xl overflow-hidden"
+        >
           {/* Chat Header */}
           <div className="px-6 py-4 border-b border-gray-200 flex flex-row items-center justify-between">
             <h1 className="text-xl font-semibold text-gray-600">
@@ -458,49 +556,49 @@ export function Chat() {
                                 const flushTextGroup = () => {
                                   if (currentTextGroup.length > 0) {
                                     let combinedText = currentTextGroup.join('');
-                                    
+
                                     // Step 1: Protect LaTeX expressions by replacing them with placeholders
                                     const latexPlaceholders: string[] = [];
                                     let placeholderIndex = 0;
-                                    
+
                                     // Match all LaTeX expressions (inline $...$, block $$...$$, \[...\], \(...\))
                                     const latexRegex = /\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)|\\\(([^)]+?)\\\)/g;
-                                    
+
                                     combinedText = combinedText.replace(latexRegex, (match) => {
                                       // Remove any markdown formatting around the LaTeX
                                       let cleaned = match;
                                       // Remove leading/trailing underscores, asterisks, or combinations
                                       cleaned = cleaned.replace(/^[*_]+/, '').replace(/[*_]+$/, '');
-                                      
+
                                       const placeholder = `__LATEX_PLACEHOLDER_${placeholderIndex}__`;
                                       latexPlaceholders.push(cleaned);
                                       placeholderIndex++;
                                       return placeholder;
                                     });
-                                    
+
                                     // Step 2: Now process markdown on text without LaTeX
                                     const withHeadings = formatHeadings(combinedText);
                                     const withBold = formatBold(withHeadings);
-                                    
+
                                     // Step 3: Restore LaTeX placeholders and process LaTeX
                                     let processedText = withBold;
                                     latexPlaceholders.forEach((latex, idx) => {
                                       const placeholder = `__LATEX_PLACEHOLDER_${idx}__`;
                                       processedText = processedText.replace(placeholder, latex);
                                     });
-                                    
+
                                     // Step 4: Check if we have LaTeX and render accordingly
                                     const hasLatex = latexPlaceholders.length > 0;
-                                    
+
                                     if (hasLatex) {
                                       // Process LaTeX on the restored text
                                       const latexParts = renderWithLatex(processedText);
                                       latexParts.forEach((lp, idx) => {
                                         if (typeof lp === 'string') {
                                           elements.push(
-                                            <span 
-                                              key={`text-group-${currentTextIndices[0]}-latex-${idx}`} 
-                                              dangerouslySetInnerHTML={{ __html: lp }} 
+                                            <span
+                                              key={`text-group-${currentTextIndices[0]}-latex-${idx}`}
+                                              dangerouslySetInnerHTML={{ __html: lp }}
                                             />
                                           );
                                         } else {
@@ -511,9 +609,9 @@ export function Chat() {
                                     } else {
                                       // No LaTeX - just render the processed markdown
                                       elements.push(
-                                        <span 
-                                          key={`text-group-${currentTextIndices[0]}`} 
-                                          dangerouslySetInnerHTML={{ __html: processedText }} 
+                                        <span
+                                          key={`text-group-${currentTextIndices[0]}`}
+                                          dangerouslySetInnerHTML={{ __html: processedText }}
                                         />
                                       );
                                     }
@@ -532,8 +630,8 @@ export function Chat() {
                                         onMouseEnter={(e) => handleCitationHover(e, part.source!)}
                                         onMouseLeave={handleCitationLeave}
                                         className="inline-flex items-center justify-center px-1.5 py-0.5 mx-0.5 text-[11px] font-medium text-blue-700 bg-blue-100 rounded border border-blue-200 hover:bg-blue-200 transition-all duration-200 cursor-pointer"
-                                        style={{ 
-                                          display: 'inline-flex', 
+                                        style={{
+                                          display: 'inline-flex',
                                           verticalAlign: 'baseline',
                                           minWidth: '20px',
                                           height: '18px'
@@ -585,7 +683,7 @@ export function Chat() {
                     <div className="max-w-3xl w-full">
                       <div className="flex items-center gap-3 bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 px-5 py-4 rounded-2xl border border-blue-100/50 shadow-sm">
                         <div className="relative shrink-0 h-5 w-5">
-                          <div 
+                          <div
                             className="absolute inset-0 rounded-full animate-spin"
                             style={{
                               background: 'conic-gradient(from 0deg, transparent, #3b82f6, #6366f1, #8b5cf6, #3b82f6, transparent)',
@@ -635,8 +733,20 @@ export function Chat() {
           </div>
         </div>
 
+        {/* Resize Handle Chat-Studio */}
+        <div
+          onMouseDown={() => startResizing('studio')}
+          onDoubleClick={resetWidths}
+          className="w-1 hover:bg-blue-400/50 cursor-col-resize transition-colors shrink-0 flex items-center justify-center group"
+        >
+          <div className="w-0.5 h-8 bg-gray-200 group-hover:bg-blue-400 rounded-full transition-colors" />
+        </div>
+
         {/* Right Sidebar - Studio */}
-        <div className="flex-[0_0_29.5%] bg-white flex flex-col border border-gray-100 rounded-xl">
+        <div
+          style={{ flex: `0 0 ${widths.studio}%`, minWidth: 0 }}
+          className="bg-white flex flex-col border border-gray-100 rounded-xl overflow-hidden"
+        >
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-600">Studio</h2>
             <button
