@@ -488,7 +488,7 @@ export function Chat() {
         <div
           onMouseDown={() => startResizing('sources')}
           onDoubleClick={resetWidths}
-          className="w-1 hover:bg-blue-400/50 cursor-col-resize transition-colors shrink-0 flex items-center justify-center group"
+          className="w-1 cursor-col-resize transition-colors shrink-0 flex items-center justify-center group"
         >
           <div className="w-0.5 h-8 bg-gray-200 group-hover:bg-blue-400 rounded-full transition-colors" />
         </div>
@@ -737,7 +737,7 @@ export function Chat() {
         <div
           onMouseDown={() => startResizing('studio')}
           onDoubleClick={resetWidths}
-          className="w-1 hover:bg-blue-400/50 cursor-col-resize transition-colors shrink-0 flex items-center justify-center group"
+          className="w-1 cursor-col-resize transition-colors shrink-0 flex items-center justify-center group"
         >
           <div className="w-0.5 h-8 bg-gray-200 group-hover:bg-blue-400 rounded-full transition-colors" />
         </div>
