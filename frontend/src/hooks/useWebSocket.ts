@@ -153,7 +153,14 @@ export function useWebSocket({ conversationId, enabled = true }: UseWebSocketOpt
             socket.off('message_end');
             socket.off('error');
         };
-    }, [conversationId, enabled]);
+    }, [conversationId,
+        enabled,
+        appendStreamingContent,
+        clearLoadingState,
+        clearStreaming,
+        finalizeStreamingMessage,
+        setLoadingState,
+        setStreamingContent,]);
 
     return {
         sendMessage,
