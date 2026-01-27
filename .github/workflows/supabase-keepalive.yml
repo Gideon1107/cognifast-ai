@@ -1,0 +1,23 @@
+name: Supabase keep-alive
+on:
+  schedule:
+    # Every 6 days at 00:00 UTC
+    - cron: '0 0 */6 * *'
+  workflow_dispatch:  # Allow manual run from Actions tab
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: ${{ secrets.SUPABASE_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_KEY }}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/sources?select=id&limit=1")
+          echo "Response code: $HTTP_CODE"
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "Supabase keep-alive OK"
+          else
+            echo "Supabase returned $HTTP_CODE (project may be paused or URL/key invalid)"
+            exit 1
+          fi

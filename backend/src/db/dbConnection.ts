@@ -45,8 +45,9 @@ export const checkDatabaseConnection = async (): Promise<boolean> => {
                 logger.error('Please check your SUPABASE_URL in .env file');
                 return false;
             } else {
-                // Unknown error
-                logger.error(`Supabase connection error: ${error.message}`);
+                // Unknown error – avoid logging raw HTML (e.g. Cloudflare 521 pages)
+                const msg = sanitizeErrorMessage(error.message);
+                logger.error(`Supabase connection error: ${msg}`);
                 return false;
             }
         }
@@ -54,9 +55,22 @@ export const checkDatabaseConnection = async (): Promise<boolean> => {
         logger.info('Supabase connection: Connected successfully');
         return true;
     } catch (error: any) {
-        logger.error(`Supabase connection failed: ${error.message}`);
+        const msg = sanitizeErrorMessage(error?.message ?? String(error));
+        logger.error(`Supabase connection failed: ${msg}`);
         return false;
     }
 };
+
+/** Avoid logging full HTML/Cloudflare error pages; return a short, readable summary. */
+function sanitizeErrorMessage(raw: string): string {
+    if (!raw || typeof raw !== 'string') return String(raw);
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html')) {
+        if (trimmed.includes('521') || trimmed.includes('Web server is down'))
+            return 'Supabase host unavailable (521: Web server is down). Check Supabase status or whether the project is paused.';
+        return 'Supabase returned an HTML error page instead of JSON. Host may be down or misconfigured.';
+    }
+    return trimmed.length > 500 ? trimmed.slice(0, 500) + '…' : trimmed;
+}
 
 export default supabase;
