@@ -7,6 +7,7 @@ import cors from 'cors';
 import { checkDatabaseConnection } from './db/dbConnection';
 import sourceRoutes from './routes/source.routes';
 import chatRoutes from './routes/chat.routes';
+import quizRoutes from './routes/quiz.routes';
 import { setupChatSocket } from './sockets/chat.socket';
 import { createLogger } from './utils/logger';
 
@@ -33,6 +34,7 @@ app.get('/', (req, res) => {
 // API routes
 app.use('/api/sources', sourceRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/quiz', quizRoutes);
 
 // Create HTTP server and Socket.io server
 const httpServer = createServer(app);
@@ -54,5 +56,6 @@ httpServer.listen(PORT, async () => {
     logger.info('API endpoints available:');
     logger.info(`   Sources:   http://localhost:${PORT}/api/sources`);
     logger.info(`   Chat:      http://localhost:${PORT}/api/chat`);
+    logger.info(`   Quiz:      http://localhost:${PORT}/api/quiz`);
     logger.info(`   WebSocket: ws://localhost:${PORT}`);
 });

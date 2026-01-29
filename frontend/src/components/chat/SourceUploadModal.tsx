@@ -245,7 +245,7 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-semibold text-gray-900">Upload Source</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 sansation-regular">Upload Source</h2>
           <button
             onClick={handleClose}
             disabled={uploadStatus === 'uploading'}

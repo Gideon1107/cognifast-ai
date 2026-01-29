@@ -208,6 +208,145 @@ export async function deleteConversation(conversationId: string): Promise<Delete
   }
 }
 
+// ============================================
+// QUIZ API
+// ============================================
+
+/**
+ * Quiz types for frontend
+ */
+export interface QuestionForTaking {
+  id: string;
+  type: 'multiple_choice' | 'true_false';
+  question: string;
+  options: string[];
+}
+
+export interface GenerateQuizResponse {
+  quizId: string;
+}
+
+export interface CreateAttemptResponse {
+  attemptId: string;
+  questions: QuestionForTaking[];
+  total: number;
+}
+
+export interface SubmitAnswerResponse {
+  correct: boolean;
+  correctIndex: number;
+  isLast?: boolean;
+  score?: number;
+  correctCount?: number;
+  wrongCount?: number;
+  total?: number;
+}
+
+export interface AttemptAnswer {
+  questionId: string;
+  selectedIndex: number;
+  correct: boolean;
+  correctIndex: number;
+}
+
+export interface GetAttemptSummaryResponse {
+  score: number;
+  correctCount: number;
+  wrongCount: number;
+  total: number;
+  status: 'in_progress' | 'completed';
+  answers: AttemptAnswer[];
+}
+
+export interface QuizListItem {
+  id: string;
+  createdAt: string;
+  questionCount: number;
+}
+
+export interface GetQuizzesForConversationResponse {
+  quizzes: QuizListItem[];
+}
+
+/**
+ * Generate a new quiz for a conversation
+ */
+export async function generateQuiz(
+  conversationId: string,
+  numQuestions: number
+): Promise<GenerateQuizResponse> {
+  try {
+    const response = await apiClient.post<GenerateQuizResponse>('/quiz/generate', {
+      conversationId,
+      numQuestions,
+    });
+    return response.data;
+  } catch (error) {
+    return handleError(error as AxiosError);
+  }
+}
+
+/**
+ * Start a quiz attempt (create attempt + get questions)
+ */
+export async function createQuizAttempt(quizId: string): Promise<CreateAttemptResponse> {
+  try {
+    const response = await apiClient.post<CreateAttemptResponse>(`/quiz/${quizId}/attempts`);
+    return response.data;
+  } catch (error) {
+    return handleError(error as AxiosError);
+  }
+}
+
+/**
+ * Submit an answer for a question
+ */
+export async function submitQuizAnswer(
+  attemptId: string,
+  questionId: string,
+  selectedIndex: number
+): Promise<SubmitAnswerResponse> {
+  try {
+    const response = await apiClient.post<SubmitAnswerResponse>(
+      `/quiz/attempts/${attemptId}/answer`,
+      { questionId, selectedIndex }
+    );
+    return response.data;
+  } catch (error) {
+    return handleError(error as AxiosError);
+  }
+}
+
+/**
+ * Get attempt summary
+ */
+export async function getAttemptSummary(attemptId: string): Promise<GetAttemptSummaryResponse> {
+  try {
+    const response = await apiClient.get<GetAttemptSummaryResponse>(
+      `/quiz/attempts/${attemptId}`
+    );
+    return response.data;
+  } catch (error) {
+    return handleError(error as AxiosError);
+  }
+}
+
+/**
+ * Get all quizzes for a conversation
+ */
+export async function getQuizzesForConversation(
+  conversationId: string
+): Promise<QuizListItem[]> {
+  try {
+    const response = await apiClient.get<GetQuizzesForConversationResponse>(
+      `/quiz/conversation/${conversationId}`
+    );
+    return response.data.quizzes;
+  } catch (error) {
+    return handleError(error as AxiosError);
+  }
+}
+
 export default {
   uploadSource,
   uploadUrlSource,
@@ -219,5 +358,10 @@ export default {
   getAllConversations,
   deleteConversation,
   updateConversation,
+  generateQuiz,
+  createQuizAttempt,
+  submitQuizAnswer,
+  getAttemptSummary,
+  getQuizzesForConversation,
 };
 

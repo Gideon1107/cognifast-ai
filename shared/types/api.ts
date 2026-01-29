@@ -3,7 +3,7 @@
  * Request and Response types for all API endpoints
  */
 
-import { Message, MessageSource, Conversation, SourceMetadata } from './entities';
+import type { Message, MessageSource, Conversation, SourceMetadata } from './entities';
 
 // ============================================
 // CHAT API TYPES
