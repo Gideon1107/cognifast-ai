@@ -123,20 +123,18 @@ CREATE TRIGGER update_conversations_updated_at
 -- Quizzes table
 CREATE TABLE IF NOT EXISTS quizzes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    source_id UUID REFERENCES sources(id) ON DELETE CASCADE,
-    difficulty TEXT CHECK (difficulty IN ('easy', 'medium', 'hard')),
-    questions JSONB NOT NULL, -- Array of question objects with answers
+    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+    questions JSONB NOT NULL, -- Array of Question objects with correctIndex
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Quiz attempts table with partial progress tracking
+-- Quiz attempts table
 CREATE TABLE IF NOT EXISTS quiz_attempts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     quiz_id UUID REFERENCES quizzes(id) ON DELETE CASCADE,
-    answers JSONB NOT NULL, -- User's submitted answers
+    answers JSONB NOT NULL, -- Array of AttemptAnswer: { questionId, selectedIndex, correct, correctIndex }
     score NUMERIC, -- Overall score (0-100)
-    feedback JSONB, -- Detailed feedback per question
-    status TEXT CHECK (status IN ('in_progress', 'completed', 'failed')), -- Track grading progress
+    status TEXT CHECK (status IN ('in_progress', 'completed')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -166,8 +164,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
 
 -- Quizzes indexes
-CREATE INDEX IF NOT EXISTS idx_quizzes_source_id ON quizzes(source_id);
-CREATE INDEX IF NOT EXISTS idx_quizzes_difficulty ON quizzes(difficulty);
+CREATE INDEX IF NOT EXISTS idx_quizzes_conversation_id ON quizzes(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_quizzes_created_at ON quizzes(created_at DESC);
 
 -- Quiz attempts indexes

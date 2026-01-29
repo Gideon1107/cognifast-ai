@@ -187,9 +187,35 @@ function renderInlineLatex(text: string, startKey: number): (string | ReactEleme
     lastIndex = match.index + match[0].length;
   }
 
-  // Add remaining text
+  // Add remaining text; if it starts with $ but has no closing $ (common from LLM/API), treat as inline math
   if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
+    const remaining = text.slice(lastIndex);
+    const unclosedDollar = /^\s*\$([^$\n]+)$/.exec(remaining);
+    if (unclosedDollar) {
+      const equation = unclosedDollar[1].trim();
+      if (equation) {
+        try {
+          const html = katex.renderToString(equation, {
+            throwOnError: false,
+            displayMode: false,
+          });
+          parts.push(
+            <span
+              key={`inline-${key++}`}
+              style={{ display: 'inline', verticalAlign: 'middle' }}
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          );
+          return parts.length > 0 ? parts : [text];
+        } catch {
+          parts.push(remaining);
+        }
+      } else {
+        parts.push(remaining);
+      }
+    } else {
+      parts.push(remaining);
+    }
   }
 
   return parts.length > 0 ? parts : [text];

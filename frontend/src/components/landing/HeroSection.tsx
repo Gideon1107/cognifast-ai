@@ -40,7 +40,7 @@ export function HeroSection({
 
   return (
     <div className={`py-16 md:py-24 ${centered ? 'text-center' : ''}`}>
-      <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold text-gray-900 mb-6 leading-[1.1] tracking-tight">
+      <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold text-gray-900 mb-6 leading-[1.1] tracking-tight sansation-regular">
         {renderTitle()}
       </h1>
       <p className="text-xl md:text-2xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed">

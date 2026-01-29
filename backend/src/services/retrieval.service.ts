@@ -344,6 +344,59 @@ export class RetrievalService {
     }
 
     /**
+     * Get all chunks for multiple sources (for quiz generation)
+     */
+    async getAllChunksForSources(sourceIds: string[]): Promise<RetrievedChunk[]> {
+        try {
+            if (sourceIds.length === 0) return [];
+            
+            logger.info(`Fetching all chunks for ${sourceIds.length} source(s)`);
+
+            const { data, error } = await supabase
+                .from('source_chunks')
+                .select('id, source_id, chunk_text, chunk_index')
+                .in('source_id', sourceIds)
+                .order('chunk_index', { ascending: true });
+
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                logger.warn(`No chunks found for sources: ${sourceIds.join(', ')}`);
+                return [];
+            }
+
+            logger.info(`Retrieved ${data.length} total chunks for ${sourceIds.length} source(s)`);
+
+            // Fetch source names and types
+            const uniqueSourceIds = [...new Set(data.map((c: any) => c.source_id))];
+            const { data: sources } = await supabase
+                .from('sources')
+                .select('id, original_name, file_type')
+                .in('id', uniqueSourceIds);
+
+            const sourceNameMap = new Map(
+                (sources || []).map((s: any) => [s.id, s.original_name])
+            );
+            const sourceTypeMap = new Map(
+                (sources || []).map((s: any) => [s.id, s.file_type as 'pdf' | 'docx' | 'doc' | 'txt' | 'url'])
+            );
+
+            return data.map((chunk: any) => ({
+                id: chunk.id,
+                sourceId: chunk.source_id,
+                sourceName: sourceNameMap.get(chunk.source_id) || 'Unknown',
+                sourceType: sourceTypeMap.get(chunk.source_id),
+                chunkText: chunk.chunk_text,
+                chunkIndex: chunk.chunk_index,
+                similarity: 1.0 // Not based on similarity
+            }));
+
+        } catch (error: any) {
+            logger.error(`Failed to get chunks for sources: ${error.message}`);
+            throw new Error(`Failed to get chunks for sources: ${error.message}`);
+        }
+    }
+
+    /**
      * Get specific chunks by their IDs (for citation retrieval)
      */
     async getChunksByIds(chunkIds: string[]): Promise<RetrievedChunk[]> {

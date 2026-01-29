@@ -32,7 +32,7 @@ export function Landing() {
 
         {/* Features Section */}
         <div className="pb-24 space-y-32 px-54">
-          <h2 className="text-5xl md:text-6xl font-bold text-gray-900 text-center mb-24">
+          <h2 className="text-5xl md:text-6xl font-bold text-gray-900 text-center mb-24 sansation-regular">
             Your AI-Powered Learning Partner
           </h2>
 
@@ -41,7 +41,7 @@ export function Landing() {
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <FileText className="w-8 h-8 text-gray-900" />
-                <h3 className="text-3xl font-semibold text-gray-900">Upload your sources</h3>
+                <h3 className="text-3xl font-semibold text-gray-900 sansation-regular">Upload your sources</h3>
               </div>
               <p className="text-lg text-gray-600 leading-relaxed">
                 Upload PDFs, DOCX, and text files, and Cognifast AI will summarize them and make interesting connections between topics, all powered by advanced language models.
@@ -113,7 +113,7 @@ export function Landing() {
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <ClipboardCheck className="w-8 h-8 text-gray-900" />
-                <h3 className="text-3xl font-semibold text-gray-900">Test your knowledge</h3>
+                <h3 className="text-3xl font-semibold text-gray-900 sansation-regular">Test your knowledge</h3>
               </div>
               <p className="text-lg text-gray-600 leading-relaxed">
                 Generate quizzes automatically from your documents. Test your understanding and track your learning progress over time.

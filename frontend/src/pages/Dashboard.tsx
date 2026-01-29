@@ -315,7 +315,7 @@ export function Dashboard() {
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Delete Conversation</h2>
+              <h2 className="text-xl font-semibold text-gray-900 sansation-regular">Delete Conversation</h2>
               <button
                 onClick={handleCancelDelete}
                 disabled={isDeleting}
@@ -379,7 +379,7 @@ export function Dashboard() {
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Edit Conversation Name</h2>
+              <h2 className="text-xl font-semibold text-gray-900 sansation-regular">Edit Conversation Name</h2>
               <button
                 onClick={handleCancelEdit}
                 disabled={isUpdating}

@@ -4,5 +4,6 @@
  */
 
 export { useChatStore } from './useChatStore';
+export { useQuizStore } from './useQuizStore';
 export type { ChatStore, StreamingState } from './types';
 
