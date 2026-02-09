@@ -1,9 +1,11 @@
 import { Request, Response } from 'express';
-import supabase from '../db/dbConnection';
+import { db } from '../db/dbConnection';
+import { sources, sourceChunks } from '../db/schema';
+import { eq, desc } from 'drizzle-orm';
 import { SourceService } from '../services/source.service';
 import { EmbeddingService } from '../services/embedding.service';
 import { StorageService } from '../services/storage.service';
-import { SourceMetadata, SourceUploadResponse } from '../types/source.types';
+import { SourceMetadata, SourceUploadResponse, SourceRow } from '../types/source.types';
 import { UploadUrlRequest } from '@shared/types';
 import path from 'path';
 import fs from 'fs';
@@ -12,17 +14,29 @@ import { createLogger } from '../utils/logger';
 
 const logger = createLogger('SOURCE-CONTROLLER');
 
+function sourceRowToApi(row: SourceRow) {
+    return {
+        id: row.id,
+        filename: row.filename,
+        originalName: row.originalName,
+        fileType: row.fileType,
+        fileSize: row.fileSize,
+        filePath: row.filePath,
+        sourceUrl: row.sourceUrl ?? undefined,
+        extractedText: row.extractedText ?? undefined,
+        createdAt: row.createdAt?.toISOString() ?? new Date().toISOString(),
+        updatedAt: row.updatedAt?.toISOString() ?? new Date().toISOString(),
+    };
+}
+
 export class SourceController {
-    /**
-     * Upload and process a source (file)
-     */
     static async uploadFileSource(req: Request, res: Response): Promise<void> {
         try {
             if (!req.file) {
                 res.status(400).json({
                     success: false,
                     message: 'No file uploaded',
-                    error: 'Please provide a file to upload'
+                    error: 'Please provide a file to upload',
                 } as SourceUploadResponse);
                 return;
             }
@@ -33,69 +47,57 @@ export class SourceController {
             const fileType = SourceService.getFileType(originalName);
             const fileSize = SourceService.getFileSize(filePath);
 
-            // Extract text from the source
             logger.info(`Extracting text from ${originalName}...`);
             const extractedText = await SourceService.extractText(filePath, fileType);
             logger.info(`Extracted ${extractedText.length} characters from source`);
 
-            // Upload to Supabase Storage
-            logger.info('Uploading file to Supabase Storage...');
+            logger.info('Uploading file to local storage...');
             const storageService = new StorageService();
-            const { publicUrl, path: storagePath } = await storageService.uploadFile(filePath, originalName);
-            logger.info(`File uploaded to Supabase: ${publicUrl}`);
+            await storageService.ensureBucketExists();
+            const { path: storagePath } = await storageService.uploadFile(filePath, originalName);
+            logger.info(`File uploaded: ${storagePath}`);
 
-            // Create source metadata
+            const sourceId = uuidv4();
             const sourceData: SourceMetadata = {
-                id: uuidv4(),
+                id: sourceId,
                 filename: path.basename(filePath),
-                originalName: originalName,
-                fileType: fileType,
-                fileSize: fileSize,
-                filePath: storagePath, // Supabase storage path
-                extractedText: extractedText,
+                originalName,
+                fileType,
+                fileSize,
+                filePath: storagePath,
+                extractedText,
                 createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
             };
 
-            // Save to Supabase
-            const { data, error } = await supabase
-                .from('sources')
-                .insert([{
-                    id: sourceData.id,
+            try {
+                await db.insert(sources).values({
+                    id: sourceId,
                     filename: sourceData.filename,
-                    original_name: sourceData.originalName,
-                    file_type: sourceData.fileType,
-                    file_size: sourceData.fileSize,
-                    file_path: sourceData.filePath,
-                    extracted_text: sourceData.extractedText,
-                    created_at: sourceData.createdAt,
-                    updated_at: sourceData.updatedAt
-                }])
-                .select()
-                .single();
-
-            if (error) {
+                    originalName: sourceData.originalName,
+                    fileType: sourceData.fileType,
+                    fileSize: sourceData.fileSize,
+                    filePath: sourceData.filePath,
+                    extractedText: sourceData.extractedText,
+                });
+            } catch (error: any) {
                 logger.error(`Error saving source to database: ${error.message}`);
-                
-                // Clean up: delete from Supabase Storage and local file
                 try {
                     await storageService.deleteFile(storagePath);
                     fs.unlinkSync(filePath);
                 } catch (cleanupError) {
                     logger.error(`Error during cleanup: ${cleanupError}`);
                 }
-
                 res.status(500).json({
                     success: false,
                     message: 'Failed to save source to database',
-                    error: error.message
+                    error: error.message,
                 } as SourceUploadResponse);
                 return;
             }
 
-            logger.info(`Source saved successfully: ${sourceData.id}`);
+            logger.info(`Source saved successfully: ${sourceId}`);
 
-            // Clean up local file after successful database save
             try {
                 fs.unlinkSync(filePath);
                 logger.info('Local file cleaned up');
@@ -103,29 +105,21 @@ export class SourceController {
                 logger.error(`Error deleting local file: ${cleanupError}`);
             }
 
-            // Process source: chunk and generate embeddings
             try {
                 logger.info('Generating embeddings...');
                 const embeddingService = new EmbeddingService();
                 const chunksWithEmbeddings = await embeddingService.processSource(extractedText);
-                
                 logger.info(`Generated ${chunksWithEmbeddings.length} chunks with embeddings`);
 
-                // Save chunks and embeddings to database
-                const chunkInserts = chunksWithEmbeddings.map(({ chunk, embedding }) => ({
-                    source_id: sourceData.id,
-                    chunk_text: chunk.text,
-                    chunk_index: chunk.index,
-                    embedding: embedding
-                }));
-
-                const { error: chunkError } = await supabase
-                    .from('source_chunks')
-                    .insert(chunkInserts);
-
-                if (chunkError) {
-                    logger.error(`Error saving embeddings: ${chunkError}`);
-                } else {
+                if (chunksWithEmbeddings.length > 0) {
+                    await db.insert(sourceChunks).values(
+                        chunksWithEmbeddings.map(({ chunk, embedding }) => ({
+                            sourceId: sourceId,
+                            chunkText: chunk.text,
+                            chunkIndex: chunk.index,
+                            embedding,
+                        }))
+                    );
                     logger.info('Embeddings saved successfully');
                 }
             } catch (embeddingError: any) {
@@ -143,15 +137,12 @@ export class SourceController {
                     fileSize: sourceData.fileSize,
                     filePath: sourceData.filePath,
                     createdAt: sourceData.createdAt,
-                    updatedAt: sourceData.updatedAt
-                }
+                    updatedAt: sourceData.updatedAt,
+                },
             } as SourceUploadResponse);
-
         } catch (error: any) {
             logger.error(`Error uploading source: ${error.message}`);
-
-            // Clean up uploaded file if processing fails
-            if (req.file) {
+            if (req.file?.path) {
                 try {
                     fs.unlinkSync(req.file.path);
                     logger.info('Local file cleaned up after error');
@@ -159,85 +150,66 @@ export class SourceController {
                     logger.error(`Error deleting local file: ${unlinkError}`);
                 }
             }
-
             res.status(500).json({
                 success: false,
                 message: 'Failed to process source',
-                error: error.message
+                error: error.message,
             } as SourceUploadResponse);
         }
     }
 
-    /**
-     * Get all sources
-     */
     static async getAllSources(req: Request, res: Response): Promise<void> {
         try {
-            const { data, error } = await supabase
-                .from('sources')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                res.status(500).json({
-                    success: false,
-                    message: 'Failed to fetch sources',
-                    error: error.message
-                });
-                return;
-            }
+            const rows = await db
+                .select()
+                .from(sources)
+                .orderBy(desc(sources.createdAt));
 
             res.status(200).json({
                 success: true,
-                sources: data || []
+                sources: rows.map(sourceRowToApi),
             });
         } catch (error: any) {
             res.status(500).json({
                 success: false,
                 message: 'Failed to fetch sources',
-                error: error.message
+                error: error.message,
             });
         }
     }
 
-    /**
-     * Get a single source by ID
-     */
     static async getSourceById(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
 
-            const { data, error } = await supabase
-                .from('sources')
-                .select('*')
-                .eq('id', id)
-                .single();
+            const [row] = await db
+                .select()
+                .from(sources)
+                .where(eq(sources.id, id))
+                .limit(1);
 
-            if (error) {
+            if (!row) {
                 res.status(404).json({
                     success: false,
                     message: 'Source not found',
-                    error: error.message
+                    error: 'Source not found',
                 });
                 return;
             }
 
             res.status(200).json({
                 success: true,
-                source: data
+                source: sourceRowToApi(row),
             });
         } catch (error: any) {
             res.status(500).json({
                 success: false,
                 message: 'Failed to fetch source',
-                error: error.message
+                error: error.message,
             });
         }
     }
 
-    /**
-     * Upload and process a source from URL
-     */
     static async uploadUrlSource(req: Request, res: Response): Promise<void> {
         try {
             const { url } = req.body as UploadUrlRequest;
@@ -246,12 +218,11 @@ export class SourceController {
                 res.status(400).json({
                     success: false,
                     message: 'No URL provided',
-                    error: 'Please provide a valid URL'
+                    error: 'Please provide a valid URL',
                 } as SourceUploadResponse);
                 return;
             }
 
-            // Validate URL format
             let validUrl: URL;
             try {
                 validUrl = new URL(url);
@@ -262,87 +233,70 @@ export class SourceController {
                 res.status(400).json({
                     success: false,
                     message: 'Invalid URL format',
-                    error: 'Please provide a valid HTTP or HTTPS URL'
+                    error: 'Please provide a valid HTTP or HTTPS URL',
                 } as SourceUploadResponse);
                 return;
             }
 
-            // Get page title
             logger.info(`Getting page title for ${url}...`);
             const pageTitle = await SourceService.getUrlTitle(url);
 
-            // Extract text from the URL
             logger.info(`Extracting text from ${url}...`);
             const extractedText = await SourceService.extractText(url, 'url');
             logger.info(`Extracted ${extractedText.length} characters from URL`);
 
-            // Create source metadata
+            const sourceId = uuidv4();
             const sourceData: SourceMetadata = {
-                id: uuidv4(),
+                id: sourceId,
                 filename: pageTitle || validUrl.hostname,
                 originalName: pageTitle || validUrl.hostname,
                 fileType: 'url',
                 fileSize: 0,
                 filePath: '',
                 sourceUrl: url,
-                extractedText: extractedText,
+                extractedText,
                 createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
             };
 
-            // Save to Supabase
-            const { data, error } = await supabase
-                .from('sources')
-                .insert([{
-                    id: sourceData.id,
+            try {
+                await db.insert(sources).values({
+                    id: sourceId,
                     filename: sourceData.filename,
-                    original_name: sourceData.originalName,
-                    file_type: sourceData.fileType,
-                    file_size: sourceData.fileSize,
-                    file_path: sourceData.filePath,
-                    source_url: sourceData.sourceUrl,
-                    extracted_text: sourceData.extractedText,
-                    created_at: sourceData.createdAt,
-                    updated_at: sourceData.updatedAt
-                }])
-                .select()
-                .single();
-
-            if (error) {
+                    originalName: sourceData.originalName,
+                    fileType: sourceData.fileType,
+                    fileSize: sourceData.fileSize,
+                    filePath: sourceData.filePath,
+                    sourceUrl: sourceData.sourceUrl,
+                    extractedText: sourceData.extractedText,
+                });
+            } catch (error: any) {
                 logger.error(`Error saving source to database: ${error.message}`);
                 res.status(500).json({
                     success: false,
                     message: 'Failed to save source to database',
-                    error: error.message
+                    error: error.message,
                 } as SourceUploadResponse);
                 return;
             }
 
-            logger.info(`Source saved successfully: ${sourceData.id}`);
+            logger.info(`Source saved successfully: ${sourceId}`);
 
-            // Process source: chunk and generate embeddings
             try {
                 logger.info('Generating embeddings...');
                 const embeddingService = new EmbeddingService();
                 const chunksWithEmbeddings = await embeddingService.processSource(extractedText);
-                
                 logger.info(`Generated ${chunksWithEmbeddings.length} chunks with embeddings`);
 
-                // Save chunks and embeddings to database
-                const chunkInserts = chunksWithEmbeddings.map(({ chunk, embedding }) => ({
-                    source_id: sourceData.id,
-                    chunk_text: chunk.text,
-                    chunk_index: chunk.index,
-                    embedding: embedding
-                }));
-
-                const { error: chunkError } = await supabase
-                    .from('source_chunks')
-                    .insert(chunkInserts);
-
-                if (chunkError) {
-                    logger.error(`Error saving embeddings: ${chunkError}`);
-                } else {
+                if (chunksWithEmbeddings.length > 0) {
+                    await db.insert(sourceChunks).values(
+                        chunksWithEmbeddings.map(({ chunk, embedding }) => ({
+                            sourceId,
+                            chunkText: chunk.text,
+                            chunkIndex: chunk.index,
+                            embedding,
+                        }))
+                    );
                     logger.info('Embeddings saved successfully');
                 }
             } catch (embeddingError: any) {
@@ -361,18 +315,16 @@ export class SourceController {
                     filePath: sourceData.filePath,
                     sourceUrl: sourceData.sourceUrl,
                     createdAt: sourceData.createdAt,
-                    updatedAt: sourceData.updatedAt
-                }
+                    updatedAt: sourceData.updatedAt,
+                },
             } as SourceUploadResponse);
-
         } catch (error: any) {
             logger.error(`Error uploading URL source: ${error.message}`);
             res.status(500).json({
                 success: false,
                 message: 'Failed to process URL source',
-                error: error.message
+                error: error.message,
             } as SourceUploadResponse);
         }
     }
 }
-

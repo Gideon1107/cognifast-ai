@@ -4,6 +4,11 @@
  */
 
 /**
+ * Supported source file / content types
+ */
+export type SourceType = 'pdf' | 'docx' | 'doc' | 'txt' | 'url';
+
+/**
  * Message role in a conversation
  */
 export type MessageRole = 'user' | 'assistant' | 'system';
@@ -27,7 +32,7 @@ export interface MessageSource {
     chunkId: string;
     sourceId: string;
     sourceName: string;
-    sourceType?: 'pdf' | 'docx' | 'doc' | 'txt' | 'url'; // File type of the source
+    sourceType?: SourceType;
     chunkText: string;
     chunkIndex: number;
     similarity: number;
@@ -40,25 +45,49 @@ export interface Conversation {
     id: string;
     sourceIds: string[];
     sourceNames?: string[];
-    sourceTypes?: ('pdf' | 'docx' | 'doc' | 'txt' | 'url')[]; // File types for each source
+    sourceTypes?: SourceType[];
     title?: string;
     createdAt: string;
     updatedAt: string;
 }
 
 /**
- * Source metadata
+ * Text chunk from a source (used during chunking and embedding)
+ */
+export interface SourceChunk {
+    text: string;
+    index: number;
+}
+
+/**
+ * Source metadata (API/domain shape)
  */
 export interface SourceMetadata {
     id?: string;
     filename: string;
     originalName: string;
-    fileType: 'pdf' | 'docx' | 'doc' | 'txt' | 'url';
+    fileType: SourceType;
     fileSize: number;
     filePath: string;
     sourceUrl?: string;
     extractedText?: string;
     createdAt?: string;
     updatedAt?: string;
+}
+
+/**
+ * Shape of a source row as returned from the database (Drizzle/sources table)
+ */
+export interface SourceRow {
+    id: string;
+    filename: string;
+    originalName: string;
+    fileType: string;
+    fileSize: number;
+    filePath: string;
+    sourceUrl: string | null;
+    extractedText: string | null;
+    createdAt: Date | null;
+    updatedAt: Date | null;
 }
 
