@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { Sparkles, BookOpen, ClipboardList, BarChart, FileText, RefreshCw, MoreVertical } from 'lucide-react';
+import { AudioLines, MonitorPlay, BookOpen, ClipboardList, Network, Layers2, Brain, RefreshCw, MoreVertical } from 'lucide-react';
 import { useQuizStore, type QuizListItem } from '../../store/useQuizStore';
 import { generateQuiz, createQuizAttempt } from '../../lib/api';
 
@@ -18,11 +18,12 @@ interface StudioHomeProps {
 const DEFAULT_QUESTION_COUNT = 10;
 
 const studioOptions = [
-  { id: 'audio', name: 'Audio Overview', icon: Sparkles },
-  { id: 'video', name: 'Video Overview', icon: Sparkles },
-  { id: 'mindmap', name: 'Mind Map', icon: BarChart },
+  { id: 'audio', name: 'Audio Overview', icon: AudioLines },
+  { id: 'video', name: 'Video Overview', icon: MonitorPlay },
+  { id: 'mindmap', name: 'Mind Map', icon: Network },
+  { id: 'knowledgegap', name: 'Knowledge Gap', icon: Brain },
   { id: 'reports', name: 'Reports', icon: BookOpen },
-  { id: 'flashcards', name: 'Flashcards', icon: FileText },
+  { id: 'flashcards', name: 'Flashcards', icon: Layers2 },
   { id: 'quiz', name: 'Quiz', icon: ClipboardList },
 ];
 

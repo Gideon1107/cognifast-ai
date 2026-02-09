@@ -1,4 +1,4 @@
-import { RetrievedChunk } from '../services/retrieval.service';
+import type { RetrievedChunk } from '@shared/types';
 
 /**
  * Document size classification
@@ -21,9 +21,9 @@ export interface KeyPoint {
 }
 
 /**
- * Document summary
+ * Source summary
  */
-export interface DocumentSummary {
+export interface SourceSummary {
     id: string;
     documentId: string;
     summary: string; // 3-5 paragraph summary
@@ -62,13 +62,13 @@ export interface GenerateSummaryRequest {
 
 export interface GenerateSummaryResponse {
     success: boolean;
-    summary: DocumentSummary;
+    summary: SourceSummary;
     error?: string;
 }
 
 export interface GetSummaryResponse {
     success: boolean;
-    summary: DocumentSummary;
+    summary: SourceSummary;
     error?: string;
 }
 
@@ -79,7 +79,7 @@ export interface RegenerateSummaryRequest {
 
 export interface RegenerateSummaryResponse {
     success: boolean;
-    summary: DocumentSummary;
+    summary: SourceSummary;
     error?: string;
 }
 

@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
@@ -10,6 +11,8 @@ import chatRoutes from './routes/chat.routes';
 import quizRoutes from './routes/quiz.routes';
 import { setupChatSocket } from './sockets/chat.socket';
 import { createLogger } from './utils/logger';
+
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
 
 const logger = createLogger('SERVER');
 
@@ -26,10 +29,19 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Log every incoming request (method + path)
+app.use((req, res, next) => {
+    logger.info(`${req.method} ${req.originalUrl || req.url}`);
+    next();
+});
+
 // Root route
 app.get('/', (req, res) => {
     res.send('Cognifast AI API');
 });
+
+// Serve uploaded files (must be before /api/sources so /api/sources/files/* is handled here)
+app.use('/api/sources/files', express.static(UPLOADS_DIR));
 
 // API routes
 app.use('/api/sources', sourceRoutes);

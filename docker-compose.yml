@@ -1,0 +1,23 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: cognifast-db
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: cognifast
+      POSTGRES_PASSWORD: cognifast
+      POSTGRES_DB: cognifast_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./backend/src/db/vector_search_function.sql:/docker-entrypoint-initdb.d/02-vector-search.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cognifast -d cognifast_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata:

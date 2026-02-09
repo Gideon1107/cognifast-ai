@@ -1,24 +1,14 @@
-import supabase from '../db/dbConnection';
+import { db, pool } from '../db/dbConnection';
+import { sources, sourceChunks } from '../db/schema';
+import { inArray, eq, asc } from 'drizzle-orm';
+import type { RetrievedChunk, MatchChunkRow, SourceType } from '@shared/types';
 import { EmbeddingService } from './embedding.service';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('RETRIEVAL-SERVICE');
 
 /**
- * Retrieved chunk with similarity score
- */
-export interface RetrievedChunk {
-    id: string;
-    sourceId: string; 
-    sourceName: string;
-    sourceType?: 'pdf' | 'docx' | 'doc' | 'txt' | 'url';
-    chunkText: string;
-    chunkIndex: number;
-    similarity: number; // 0-1, higher is more similar
-}
-
-/**
- * Retrieval Service - Handles vector similarity search for RAG
+ * Retrieval Service - Handles vector similarity search
  */
 export class RetrievalService {
     private embeddingService: EmbeddingService;
@@ -29,7 +19,7 @@ export class RetrievalService {
 
     /**
      * Retrieve relevant chunks using vector similarity search
-     * 
+     *
      * @param query - User's question or search query
      * @param sourceIds - Array of source IDs to search within
      * @param topK - Number of chunks to return (default: 5)
@@ -46,75 +36,67 @@ export class RetrievalService {
                 throw new Error('sourceIds must be a non-empty array');
             }
 
-            // Step 1: Generate query embedding
+            // Generate query embedding
             const queryEmbedding = await this.embeddingService.generateQueryEmbedding(query);
             logger.info(`Generated embedding of length: ${queryEmbedding.length}`);
-            
-            // Validate embedding
+
             const hasNaN = queryEmbedding.some(v => isNaN(v));
             const hasInfinity = queryEmbedding.some(v => !isFinite(v));
             const allZeros = queryEmbedding.every(v => v === 0);
-            
+
             if (hasNaN || hasInfinity || allZeros) {
-                logger.error(`Invalid embedding detected!`, {
-                    hasNaN,
-                    hasInfinity,
-                    allZeros
-                });
+                logger.error(`Invalid embedding detected!`, { hasNaN, hasInfinity, allZeros });
                 throw new Error('Invalid embedding generated');
             }
-            
-            // Step 2: Call RPC with detailed diagnostics
+
+            // Call match_sources_chunks PostgreSQL function with embedding and source filter
             const matchCount = topK;
-            
             logger.debug(`=== RPC CALL DETAILS ===`);
             logger.debug(`Requested sourceIds: [${sourceIds.join(', ')}]`);
             logger.debug(`Match count: ${matchCount}, topK: ${topK}`);
-            
-            const { data, error } = await supabase.rpc('match_sources_chunks', {
-                query_embedding: queryEmbedding,
-                match_count: matchCount,
-                filter_source_ids: sourceIds
-            });
 
-            if (error) {
-                logger.error(JSON.stringify(error, null, 2));
-                logger.error(`RPC error: ${error.message}`);
+            const embeddingStr = `[${queryEmbedding.join(',')}]`;
+
+            let data: MatchChunkRow[] | null = null;
+            try {
+                const result = await pool.query<MatchChunkRow>(
+                    'SELECT * FROM match_sources_chunks($1::vector, $2::integer, $3::uuid[])',
+                    [embeddingStr, matchCount, sourceIds]
+                );
+                data = result.rows;
+            } catch (rpcError: any) {
+                logger.error(`RPC error: ${rpcError.message}`);
                 logger.warn(`Falling back to direct search`);
                 return await this.directSearch(queryEmbedding, sourceIds, topK);
             }
 
-            logger.debug(`RPC returned ${data?.length || 0} total chunks`);
-            
+            logger.debug(`RPC returned ${data?.length ?? 0} total chunks`);
             if (data && data.length > 0) {
-                const returnedSourceIds = [...new Set(data.map((d: any) => d.source_id))];
+                const returnedSourceIds = [...new Set(data.map(d => d.source_id))];
                 logger.debug(`RPC returned chunks from sources: [${returnedSourceIds.join(', ')}]`);
             }
 
             if (!data || data.length === 0) {
-                logger.error(`⚠️ RPC returned 0 chunks!`);
+                logger.error(`RPC returned 0 chunks!`);
                 
-                // Check if chunks exist for these source IDs
-                const { data: chunkCount } = await supabase
-                    .from('source_chunks')
-                    .select('source_id', { count: 'exact' })
-                    .in('source_id', sourceIds);
-                
-                logger.error(`Chunks exist in DB for these sources:`, chunkCount?.length || 0);
-                logger.warn(`Falling back to direct search`);
-                return await this.directSearch(queryEmbedding, sourceIds, topK);
+                const chunkRows = await db
+                    .select({ sourceId: sourceChunks.sourceId })
+                    .from(sourceChunks)
+                    .where(inArray(sourceChunks.sourceId, sourceIds))
+                    .limit(1);
+                if (chunkRows.length > 0) {
+                    logger.error(`Chunks exist in DB for these sources:`, chunkRows.length);
+                    logger.warn(`Falling back to direct search`);
+                    return await this.directSearch(queryEmbedding, sourceIds, topK);
+                }
             }
 
             const topChunks = data.slice(0, topK);
-
             const enrichedChunks = await this.enrichWithSourceNames(topChunks);
 
-            // Page markers are already filtered during chunking, so no need to filter here
             const avgSimilarity = enrichedChunks.reduce((sum, c) => sum + c.similarity, 0) / enrichedChunks.length;
-            logger.info(`✅ RPC SUCCESS: ${enrichedChunks.length} chunks, avg similarity: ${avgSimilarity.toFixed(3)}`);
-
+            logger.info(`RPC SUCCESS: ${enrichedChunks.length} chunks, avg similarity: ${avgSimilarity.toFixed(3)}`);
             return enrichedChunks;
-
         } catch (error: any) {
             logger.error(`Error in retrieveRelevantChunks: ${error.message}`);
             throw new Error(`Failed to retrieve chunks: ${error.message}`);
@@ -122,57 +104,46 @@ export class RetrievalService {
     }
 
     /**
-     * Enrich chunks with source names
+     * Enrich chunks with source names and types from sources table
      */
-    private async enrichWithSourceNames(chunks: any[]): Promise<RetrievedChunk[]> {
+    private async enrichWithSourceNames(chunks: MatchChunkRow[]): Promise<RetrievedChunk[]> {
         try {
-            // Get unique source IDs
-            const sourceIds = [...new Set(chunks.map((c: any) => c.source_id))];
-            
-            // Fetch source names and types
-            const { data: sources, error } = await supabase
-                .from('sources')
-                .select('id, original_name, file_type')
-                .in('id', sourceIds);
-            
-            if (error) throw error;
-            
-            // Create maps of source ID to source name and type
-            const sourceNameMap = new Map(
-                (sources || []).map((s: any) => [s.id, s.original_name])
-            );
+            const sourceIds = [...new Set(chunks.map(c => c.source_id))];
+            const sourceRows = await db
+                .select({ id: sources.id, originalName: sources.originalName, fileType: sources.fileType })
+                .from(sources)
+                .where(inArray(sources.id, sourceIds));
+
+            const sourceNameMap = new Map(sourceRows.map(s => [s.id, s.originalName]));
             const sourceTypeMap = new Map(
-                (sources || []).map((s: any) => [s.id, s.file_type as 'pdf' | 'docx' | 'doc' | 'txt' | 'url'])
+                sourceRows.map(s => [s.id, s.fileType as SourceType])
             );
-            
-            // Map chunks with source names and types
-            return chunks.map((chunk: any) => ({
+
+            return chunks.map(chunk => ({
                 id: chunk.id,
                 sourceId: chunk.source_id,
-                sourceName: sourceNameMap.get(chunk.source_id) || 'Unknown',
+                sourceName: sourceNameMap.get(chunk.source_id) ?? 'Unknown',
                 sourceType: sourceTypeMap.get(chunk.source_id),
                 chunkText: chunk.chunk_text,
                 chunkIndex: chunk.chunk_index,
-                similarity: Number(chunk.similarity)
+                similarity: Number(chunk.similarity),
             }));
         } catch (error: any) {
             logger.error(`Error enriching with source names: ${error.message}`);
-            // Return chunks without names as fallback
-            return chunks.map((chunk: any) => ({
+            return chunks.map(chunk => ({
                 id: chunk.id,
                 sourceId: chunk.source_id,
                 sourceName: 'Unknown',
                 sourceType: undefined,
                 chunkText: chunk.chunk_text,
                 chunkIndex: chunk.chunk_index,
-                similarity: Number(chunk.similarity)
+                similarity: Number(chunk.similarity),
             }));
         }
     }
 
     /**
-     * Direct database search using manual similarity calculation
-     * More reliable than RPC for pgvector in Supabase JS client
+     * Direct database search using manual cosine similarity when RPC fails or returns no rows
      */
     private async directSearch(
         queryEmbedding: number[],
@@ -182,19 +153,23 @@ export class RetrievalService {
         try {
             logger.info(`Performing direct search for ${sourceIds.length} source(s)`);
 
-            // Get all chunks from specified sources
-            const { data, error } = await supabase
-                .from('source_chunks')
-                .select('id, source_id, chunk_text, chunk_index, embedding')
-                .in('source_id', sourceIds)
-                .limit(100); // Get more chunks for manual filtering
+            // Get chunks from specified sources 
+            const chunkRows = await db
+                .select({
+                    id: sourceChunks.id,
+                    sourceId: sourceChunks.sourceId,
+                    chunkText: sourceChunks.chunkText,
+                    chunkIndex: sourceChunks.chunkIndex,
+                    embedding: sourceChunks.embedding,
+                })
+                .from(sourceChunks)
+                .where(inArray(sourceChunks.sourceId, sourceIds))
+                .limit(100);
 
-            if (error) throw error;
-            if (!data || data.length === 0) return [];
+            if (chunkRows.length === 0) return [];
+            logger.info(`Retrieved ${chunkRows.length} chunks from database`);
 
-            logger.info(`Retrieved ${data.length} chunks from database`);
-
-            // Calculate cosine similarity manually
+            // Calculate cosine similarity manually for each chunk
             const chunksWithSimilarity: Array<{
                 id: string;
                 source_id: string;
@@ -203,31 +178,23 @@ export class RetrievalService {
                 similarity: number;
             }> = [];
 
-            for (const chunk of data) {
+            for (const chunk of chunkRows) {
                 try {
-                    // Parse embedding
-                    let chunkEmbedding: number[];
-                    if (typeof chunk.embedding === 'string') {
-                        // Remove brackets and parse
-                        chunkEmbedding = JSON.parse(chunk.embedding);
-                    } else if (Array.isArray(chunk.embedding)) {
-                        chunkEmbedding = chunk.embedding;
-                    } else {
-                        logger.error(`Invalid embedding format for chunk ${chunk.id}`);
+                    const emb = chunk.embedding;
+                    if (!emb || !Array.isArray(emb)) {
+                        logger.error(`Invalid embedding for chunk ${chunk.id}`);
                         continue;
                     }
-
-                    const similarity = this.cosineSimilarity(queryEmbedding, chunkEmbedding);
+                    const similarity = this.cosineSimilarity(queryEmbedding, emb);
                     chunksWithSimilarity.push({
                         id: chunk.id,
-                        source_id: chunk.source_id,
-                        chunk_text: chunk.chunk_text,
-                        chunk_index: chunk.chunk_index,
-                        similarity: similarity
+                        source_id: chunk.sourceId,
+                        chunk_text: chunk.chunkText,
+                        chunk_index: chunk.chunkIndex,
+                        similarity,
                     });
-                } catch (error: any) {
-                    logger.error(`Error processing chunk ${chunk.id}: ${error.message}`);
-                    // Skip this chunk and continue
+                } catch (err: any) {
+                    logger.error(`Error processing chunk ${chunk.id}: ${err.message}`);
                 }
             }
 
@@ -236,39 +203,30 @@ export class RetrievalService {
             const topChunks = chunksWithSimilarity.slice(0, topK);
 
             logger.debug(`Direct search found ${chunksWithSimilarity.length} chunks total`);
-            logger.debug(`Top 5 similarities:`, 
-                chunksWithSimilarity.slice(0, 5).map(c => c.similarity.toFixed(3))
-            );
-            logger.info(`Returning ${topChunks.length} chunks, top similarity: ${topChunks[0]?.similarity.toFixed(3) || 'N/A'}`);
+            logger.info(`Returning ${topChunks.length} chunks, top similarity: ${topChunks[0]?.similarity.toFixed(3) ?? 'N/A'}`);
 
-            // Enrich with source names (don't convert similarity, enrichWithSourceNames expects similarity as-is)
+            // Add source names and types
             const enriched = topChunks.map(c => ({
                 id: c.id,
                 sourceId: c.source_id,
                 chunkText: c.chunk_text,
                 chunkIndex: c.chunk_index,
-                similarity: c.similarity // Already cosine similarity (0-1)
+                similarity: c.similarity,
             }));
-
-            // Page markers are already filtered during chunking, so no need to filter here
-            // Add source names and types
             const uniqueSourceIds = [...new Set(enriched.map(c => c.sourceId))];
-            const { data: sources } = await supabase
-                .from('sources')
-                .select('id, original_name, file_type')
-                .in('id', uniqueSourceIds);
-            
-            const sourceNameMap = new Map((sources || []).map(s => [s.id, s.original_name]));
-            const sourceTypeMap = new Map((sources || []).map(s => [s.id, s.file_type as 'pdf' | 'docx' | 'doc' | 'txt' | 'url']));
-            
-            const finalChunks = enriched.map(chunk => ({
+            const sourceRows = await db
+                .select({ id: sources.id, originalName: sources.originalName, fileType: sources.fileType })
+                .from(sources)
+                .where(inArray(sources.id, uniqueSourceIds));
+
+            const sourceNameMap = new Map(sourceRows.map(s => [s.id, s.originalName]));
+            const sourceTypeMap = new Map(sourceRows.map(s => [s.id, s.fileType as SourceType]));
+
+            return enriched.map(chunk => ({
                 ...chunk,
-                sourceName: sourceNameMap.get(chunk.sourceId) || 'Unknown',
-                sourceType: sourceTypeMap.get(chunk.sourceId)
+                sourceName: sourceNameMap.get(chunk.sourceId) ?? 'Unknown',
+                sourceType: sourceTypeMap.get(chunk.sourceId),
             }));
-
-            return finalChunks;
-
         } catch (error: any) {
             logger.error(`Direct search failed: ${error.message}`);
             throw new Error(`Direct search failed: ${error.message}`);
@@ -283,17 +241,12 @@ export class RetrievalService {
             logger.error(`Vector length mismatch: ${vecA.length} vs ${vecB.length}`);
             throw new Error(`Vectors must have same length: ${vecA.length} vs ${vecB.length}`);
         }
-
-        let dotProduct = 0;
-        let normA = 0;
-        let normB = 0;
-
+        let dotProduct = 0, normA = 0, normB = 0;
         for (let i = 0; i < vecA.length; i++) {
             dotProduct += vecA[i] * vecB[i];
             normA += vecA[i] * vecA[i];
             normB += vecB[i] * vecB[i];
         }
-
         return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
     }
 
@@ -304,40 +257,41 @@ export class RetrievalService {
         try {
             logger.info(`Fetching all chunks for source: ${sourceId}`);
 
-            const { data, error } = await supabase
-                .from('source_chunks')
-                .select('id, source_id, chunk_text, chunk_index')
-                .eq('source_id', sourceId)
-                .order('chunk_index', { ascending: true });
+            const chunkRows = await db
+                .select({
+                    id: sourceChunks.id,
+                    sourceId: sourceChunks.sourceId,
+                    chunkText: sourceChunks.chunkText,
+                    chunkIndex: sourceChunks.chunkIndex,
+                })
+                .from(sourceChunks)
+                .where(eq(sourceChunks.sourceId, sourceId))
+                .orderBy(asc(sourceChunks.chunkIndex));
 
-            if (error) throw error;
-            if (!data || data.length === 0) {
+            if (chunkRows.length === 0) {
                 logger.warn(`No chunks found for source: ${sourceId}`);
                 return [];
             }
+            logger.info(`Retrieved ${chunkRows.length} chunks for source`);
 
-            logger.info(`Retrieved ${data.length} chunks for source`);
+            const [sourceRow] = await db
+                .select({ originalName: sources.originalName, fileType: sources.fileType })
+                .from(sources)
+                .where(eq(sources.id, sourceId))
+                .limit(1);
 
-            // Fetch source name and type
-            const { data: source } = await supabase
-                .from('sources')
-                .select('original_name, file_type')
-                .eq('id', sourceId)
-                .single();
+            const sourceName = sourceRow?.originalName ?? 'Unknown';
+            const sourceType = sourceRow?.fileType as SourceType | undefined;
 
-            const sourceName = source?.original_name || 'Unknown';
-            const sourceType = source?.file_type as 'pdf' | 'docx' | 'doc' | 'txt' | 'url' | undefined;
-
-            return data.map((chunk: any) => ({
+            return chunkRows.map(chunk => ({
                 id: chunk.id,
-                sourceId: chunk.source_id,
-                sourceName: sourceName,
-                sourceType: sourceType,
-                chunkText: chunk.chunk_text,
-                chunkIndex: chunk.chunk_index,
-                similarity: 1.0 // Not based on similarity for this query
+                sourceId: chunk.sourceId,
+                sourceName,
+                sourceType,
+                chunkText: chunk.chunkText,
+                chunkIndex: chunk.chunkIndex,
+                similarity: 1.0,
             }));
-
         } catch (error: any) {
             throw new Error(`Failed to get source chunks: ${error.message}`);
         }
@@ -349,47 +303,45 @@ export class RetrievalService {
     async getAllChunksForSources(sourceIds: string[]): Promise<RetrievedChunk[]> {
         try {
             if (sourceIds.length === 0) return [];
-            
             logger.info(`Fetching all chunks for ${sourceIds.length} source(s)`);
 
-            const { data, error } = await supabase
-                .from('source_chunks')
-                .select('id, source_id, chunk_text, chunk_index')
-                .in('source_id', sourceIds)
-                .order('chunk_index', { ascending: true });
+            const chunkRows = await db
+                .select({
+                    id: sourceChunks.id,
+                    sourceId: sourceChunks.sourceId,
+                    chunkText: sourceChunks.chunkText,
+                    chunkIndex: sourceChunks.chunkIndex,
+                })
+                .from(sourceChunks)
+                .where(inArray(sourceChunks.sourceId, sourceIds))
+                .orderBy(asc(sourceChunks.chunkIndex));
 
-            if (error) throw error;
-            if (!data || data.length === 0) {
+            if (chunkRows.length === 0) {
                 logger.warn(`No chunks found for sources: ${sourceIds.join(', ')}`);
                 return [];
             }
+            logger.info(`Retrieved ${chunkRows.length} total chunks for ${sourceIds.length} source(s)`);
 
-            logger.info(`Retrieved ${data.length} total chunks for ${sourceIds.length} source(s)`);
+            const uniqueSourceIds = [...new Set(chunkRows.map(c => c.sourceId))];
+            const sourceRows = await db
+                .select({ id: sources.id, originalName: sources.originalName, fileType: sources.fileType })
+                .from(sources)
+                .where(inArray(sources.id, uniqueSourceIds));
 
-            // Fetch source names and types
-            const uniqueSourceIds = [...new Set(data.map((c: any) => c.source_id))];
-            const { data: sources } = await supabase
-                .from('sources')
-                .select('id, original_name, file_type')
-                .in('id', uniqueSourceIds);
-
-            const sourceNameMap = new Map(
-                (sources || []).map((s: any) => [s.id, s.original_name])
-            );
+            const sourceNameMap = new Map(sourceRows.map(s => [s.id, s.originalName]));
             const sourceTypeMap = new Map(
-                (sources || []).map((s: any) => [s.id, s.file_type as 'pdf' | 'docx' | 'doc' | 'txt' | 'url'])
+                sourceRows.map(s => [s.id, s.fileType as SourceType])
             );
 
-            return data.map((chunk: any) => ({
+            return chunkRows.map(chunk => ({
                 id: chunk.id,
-                sourceId: chunk.source_id,
-                sourceName: sourceNameMap.get(chunk.source_id) || 'Unknown',
-                sourceType: sourceTypeMap.get(chunk.source_id),
-                chunkText: chunk.chunk_text,
-                chunkIndex: chunk.chunk_index,
-                similarity: 1.0 // Not based on similarity
+                sourceId: chunk.sourceId,
+                sourceName: sourceNameMap.get(chunk.sourceId) ?? 'Unknown',
+                sourceType: sourceTypeMap.get(chunk.sourceId),
+                chunkText: chunk.chunkText,
+                chunkIndex: chunk.chunkIndex,
+                similarity: 1.0,
             }));
-
         } catch (error: any) {
             logger.error(`Failed to get chunks for sources: ${error.message}`);
             throw new Error(`Failed to get chunks for sources: ${error.message}`);
@@ -403,44 +355,41 @@ export class RetrievalService {
         try {
             if (chunkIds.length === 0) return [];
 
-            const { data, error } = await supabase
-                .from('source_chunks')
-                .select('id, source_id, chunk_text, chunk_index')
-                .in('id', chunkIds);
+            const chunkRows = await db
+                .select({
+                    id: sourceChunks.id,
+                    sourceId: sourceChunks.sourceId,
+                    chunkText: sourceChunks.chunkText,
+                    chunkIndex: sourceChunks.chunkIndex,
+                })
+                .from(sourceChunks)
+                .where(inArray(sourceChunks.id, chunkIds));
 
-            if (error) throw error;
-            if (!data) return [];
+            if (chunkRows.length === 0) return [];
 
-            // Get unique source IDs
-            const sourceIds = [...new Set(data.map((c: any) => c.source_id))];
+            const sourceIds = [...new Set(chunkRows.map(c => c.sourceId))];
+            const sourceRows = await db
+                .select({ id: sources.id, originalName: sources.originalName, fileType: sources.fileType })
+                .from(sources)
+                .where(inArray(sources.id, sourceIds));
 
-            // Fetch source names and types
-            const { data: sources } = await supabase
-                .from('sources')
-                .select('id, original_name, file_type')
-                .in('id', sourceIds);
-
-            const sourceNameMap = new Map(
-                (sources || []).map((s: any) => [s.id, s.original_name])
-            );
+            const sourceNameMap = new Map(sourceRows.map(s => [s.id, s.originalName]));
             const sourceTypeMap = new Map(
-                (sources || []).map((s: any) => [s.id, s.file_type as 'pdf' | 'docx' | 'doc' | 'txt' | 'url'])
+                sourceRows.map(s => [s.id, s.fileType as SourceType])
             );
 
-            return data.map((chunk: any) => ({
+            return chunkRows.map(chunk => ({
                 id: chunk.id,
-                sourceId: chunk.source_id,
-                sourceName: sourceNameMap.get(chunk.source_id) || 'Unknown',
-                sourceType: sourceTypeMap.get(chunk.source_id),
-                chunkText: chunk.chunk_text,
-                chunkIndex: chunk.chunk_index,
-                similarity: 1.0
+                sourceId: chunk.sourceId,
+                sourceName: sourceNameMap.get(chunk.sourceId) ?? 'Unknown',
+                sourceType: sourceTypeMap.get(chunk.sourceId),
+                chunkText: chunk.chunkText,
+                chunkIndex: chunk.chunkIndex,
+                similarity: 1.0,
             }));
-
         } catch (error: any) {
             logger.error(`Failed to get chunks by IDs: ${error.message}`);
             throw new Error(`Failed to get chunks by IDs: ${error.message}`);
         }
     }
 }
-
