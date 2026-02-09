@@ -1,0 +1,14 @@
+{
+  "name": "cognifast-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cognifast - AI-powered learning platform",
+  "scripts": {
+    "db:up": "docker compose up -d",
+    "db:recreate": "docker compose up -d --force-recreate",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f db",
+    "db:reset": "docker compose down -v && docker compose up -d",
+    "db:health": "docker exec cognifast-db pg_isready -U cognifast -d cognifast_db"
+  }
+}
