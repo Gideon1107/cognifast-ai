@@ -33,6 +33,7 @@ flowchart TB
         RetrievalNode[Retrieval Node]
         GeneratorNode[Generator Node]
         QualityNode[Quality Node]
+        IdentityResponseNode[identity_response Node<br/>Canned deflection]
     end
 
     subgraph Agents["Agent Layer"]
@@ -48,10 +49,10 @@ flowchart TB
     end
 
     subgraph Database["Database Layer"]
-        Supabase[(Supabase<br/>PostgreSQL + PgVector)]
+        Postgres[(PostgreSQL<br/>Drizzle + pg Pool + PgVector)]
         MessagesTable[(messages table)]
         ConversationsTable[(conversations table)]
-        ChunksTable[(document_chunks table)]
+        ChunksTable[(source_chunks table)]
     end
 
     subgraph External["External Services"]
@@ -89,13 +90,15 @@ flowchart TB
     
     RouterNode -->|17. Decision: 'retrieve'| RetrievalNode
     RouterNode -->|18. Decision: 'direct_answer' or 'clarify'| GeneratorNode
+    RouterNode -->|18b. Decision: 'identity_block'| IdentityResponseNode
+    IdentityResponseNode -->|18c. Canned message| FlowEnd[(Flow ends)]
     
     RetrievalNode -->|19. Execute| RetrievalAgent
     RetrievalAgent -->|20. Calls| RetrievalService
     RetrievalService -->|21. Generate query embedding| EmbeddingService
     EmbeddingService -->|22. API call| OpenAI
-    RetrievalService -->|23. Vector search| Supabase
-    Supabase -->|24. Query| ChunksTable
+    RetrievalService -->|23. Vector search| Postgres
+    Postgres -->|24. Query| ChunksTable
     RetrievalService -->|25. Returns chunks| RetrievalAgent
     RetrievalAgent -->|26. Updates state| RetrievalNode
     RetrievalNode -->|27. Always| GeneratorNode
@@ -145,10 +148,10 @@ flowchart TB
 
     class ChatUI,WebSocketHook,ZustandStore,WebSocketClient frontend
     class SocketIO,SocketServer,ChatSocket websocket
-    class ChatStreamService,ChatService,ChatGraph backend
+    class ChatStreamService,ChatService,ChatGraph,IdentityResponseNode backend
     class RouterAgent,RetrievalAgent,GeneratorAgent,QualityAgent agent
     class RetrievalService,EmbeddingService service
-    class Supabase,MessagesTable,ConversationsTable,ChunksTable database
+    class Postgres,MessagesTable,ConversationsTable,ChunksTable database
     class OpenAI external
 ```
 
@@ -172,19 +175,20 @@ flowchart TB
 
 ### 2. LangGraph Execution Flow (Steps 13-42)
 
-**Router → Retrieval (conditional) → Generator → Quality → End/Retry**
+**Router → Retrieval (conditional) / Generator / identity_response (conditional) → Generator → Quality → End/Retry**
 
 13. **Router Agent** (`router.agent.ts`):
     - Analyzes user query using OpenAI GPT-4o-mini
-    - Returns decision: `'retrieve'`, `'direct_answer'`, or `'clarify'`
+    - Returns one of four decisions: `'retrieve'`, `'direct_answer'`, `'clarify'`, or `'identity_block'`
     - If `'retrieve'`: routes to Retrieval Node
     - If `'direct_answer'` or `'clarify'`: routes directly to Generator Node
+    - If `'identity_block'`: routes to `identity_response` node (canned deflection message, then END; no quality check)
 
 14. **Retrieval Agent** (`retrieval.agent.ts`) - Only if router decision is `'retrieve'`:
     - Calls `RetrievalService.retrieveRelevantChunks()`
     - RetrievalService calls `EmbeddingService.generateQueryEmbedding()`
     - EmbeddingService calls OpenAI API for query embedding
-    - RetrievalService performs vector search in Supabase using `match_documents_chunks` RPC
+    - RetrievalService performs vector search in PostgreSQL using `match_sources_chunks` RPC
     - Returns top 5 relevant chunks with similarity scores
     - Updates state with retrieved chunks
 
@@ -277,9 +281,9 @@ flowchart TB
 - **Select**: Conversation details and document IDs (step 8)
 - **Update**: `updated_at` timestamp on new messages (step 44)
 
-### Document Chunks Table
-- **Select**: Vector search via `match_documents_chunks` RPC (step 23)
-- **Filter**: By document IDs associated with conversation
+### Source Chunks Table
+- **Select**: Vector search via `match_sources_chunks` RPC (step 23)
+- **Filter**: By source IDs associated with conversation
 
 ## WebSocket Events
 
