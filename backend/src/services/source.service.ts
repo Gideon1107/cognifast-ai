@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import mammoth from 'mammoth';
+import type { SourceType } from '@shared/types';
 import { SourceMetadata } from '../types/source.types';
 import { WebScraperService } from './web-scraper.service';
 
@@ -82,7 +83,7 @@ export class SourceService {
     /**
      * Determine file type from filename or URL
      */
-    static getFileType(filenameOrUrl: string): 'pdf' | 'docx' | 'doc' | 'txt' | 'url' {
+    static getFileType(filenameOrUrl: string): SourceType {
         // Check if it's a URL
         if (filenameOrUrl.startsWith('http://') || filenameOrUrl.startsWith('https://')) {
             return 'url';

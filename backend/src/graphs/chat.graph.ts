@@ -1,4 +1,5 @@
 import { StateGraph, END, START, Annotation } from '@langchain/langgraph';
+import { v4 as uuidv4 } from 'uuid';
 import { ConversationState, Message, RetrievedChunk, ResponseQuality, RouterDecision } from '../types/chat.types';
 import { routerAgent } from '../agents/chat/router.agent';
 import { retrievalAgent } from '../agents/chat/retrieval.agent';
@@ -7,6 +8,9 @@ import { qualityAgent } from '../agents/chat/quality.agent';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('CHAT-GRAPH');
+
+const IDENTITY_BLOCK_MESSAGE =
+    "I'm an AI assistant here to help you get answers from your documents. I can't share details about my model or identity. What would you like to know about your sources?";
 
 /**
  * Chat StateGraph
@@ -45,27 +49,45 @@ const StateAnnotation = Annotation.Root({
 // Define the graph
 const chatGraphBuilder = new StateGraph(StateAnnotation);
 
+// Node: return canned message for identity queries
+async function identityResponseNode(state: ConversationState): Promise<Partial<ConversationState>> {
+    const cannedMessage: Message = {
+        id: uuidv4(),
+        conversationId: state.conversationId,
+        role: 'assistant',
+        content: IDENTITY_BLOCK_MESSAGE,
+        createdAt: new Date().toISOString(),
+    };
+    return { messages: [...state.messages, cannedMessage] };
+}
+
 // Add nodes
 chatGraphBuilder.addNode('router' as any, routerAgent as any);
 chatGraphBuilder.addNode('retrieval' as any, retrievalAgent as any);
 chatGraphBuilder.addNode('generator' as any, generatorAgent as any);
 chatGraphBuilder.addNode('quality' as any, qualityAgent as any);
+chatGraphBuilder.addNode('identity_response' as any, identityResponseNode as any);
 
 // Set entry point: START → Router
 chatGraphBuilder.addEdge(START, 'router' as any);
 
-// Router → Retrieval OR Generator (conditional based on router decision)
+// Router → Retrieval OR Generator OR identity_response (conditional)
 chatGraphBuilder.addConditionalEdges(
     'router' as any,
     (state: any) => {
         logger.info(`Router decision: ${state.routerDecision}`);
         if (state.routerDecision === 'retrieve') {
-            return 'retrieval'; // Need to fetch document chunks
-        } else {
-            return 'generator'; // Direct answer or clarification
+            return 'retrieval';
         }
+        if (state.routerDecision === 'identity_block') {
+            return 'identity_response';
+        }
+        return 'generator'; // direct_answer or clarify
     }
 );
+
+// identity_response → END (no quality check)
+chatGraphBuilder.addEdge('identity_response' as any, END);
 
 // Retrieval → Generator (always after retrieval)
 chatGraphBuilder.addEdge('retrieval' as any, 'generator' as any);

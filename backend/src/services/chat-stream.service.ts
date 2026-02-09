@@ -5,7 +5,9 @@
 
 import { Socket } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
-import supabase from '../db/dbConnection';
+import { db } from '../db/dbConnection';
+import { messages, conversations } from '../db/schema';
+import { eq } from 'drizzle-orm';
 import { ChatService } from './chat.service';
 import { streamChatGraph } from '../graphs/chat.graph';
 import { ConversationState, Message } from '../types/chat.types';
@@ -40,15 +42,12 @@ export async function streamChatGraphWithWebSocket(
         };
 
         // Save user message to database
-        await supabase
-            .from('messages')
-            .insert([{
-                id: userMessage.id,
-                conversation_id: userMessage.conversationId,
-                role: userMessage.role,
-                content: userMessage.content,
-                created_at: userMessage.createdAt
-            }]);
+        await db.insert(messages).values({
+            id: userMessage.id,
+            conversationId: userMessage.conversationId,
+            role: userMessage.role,
+            content: userMessage.content,
+        });
 
         // Create initial state
         const isFirstMessage = existingMessages.length === 0;
@@ -58,7 +57,7 @@ export async function streamChatGraphWithWebSocket(
             messages: [...existingMessages, userMessage],
             currentQuery: message,
             retrievedChunks: [],
-            routerDecision: 'clarify', // Will be set by router agent
+            routerDecision: 'clarify', 
             responseQuality: 'pending',
             retryCount: 0,
             metadata: {
@@ -158,23 +157,22 @@ export async function streamChatGraphWithWebSocket(
         // Save assistant message to database
         if (finalAssistantMessage) {
             finalAssistantMessage.id = streamingMessageId;
-            
-            await supabase
-                .from('messages')
-                .insert([{
-                    id: finalAssistantMessage.id,
-                    conversation_id: finalAssistantMessage.conversationId,
-                    role: finalAssistantMessage.role,
-                    content: finalAssistantMessage.content,
-                    sources: finalAssistantMessage.sources,
-                    created_at: finalAssistantMessage.createdAt
-                }]);
+
+            await db.insert(messages).values({
+                id: finalAssistantMessage.id,
+                conversationId: finalAssistantMessage.conversationId,
+                role: finalAssistantMessage.role,
+                content: finalAssistantMessage.content,
+                sources: finalAssistantMessage.sources
+                    ? (finalAssistantMessage.sources as unknown as Record<string, unknown>)
+                    : null,
+            });
 
             // Update conversation updated_at
-            await supabase
-                .from('conversations')
-                .update({ updated_at: new Date().toISOString() })
-                .eq('id', conversationId);
+            await db
+                .update(conversations)
+                .set({ updatedAt: new Date() })
+                .where(eq(conversations.id, conversationId));
 
             // Emit message end
             socket.emit('message_end', {

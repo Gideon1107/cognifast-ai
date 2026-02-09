@@ -2,14 +2,10 @@ import { OpenAIEmbeddings } from '@langchain/openai';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import type { SourceChunk } from '@shared/types';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('EMBEDDING-SERVICE');
-
-export interface SourceChunk {
-    text: string;
-    index: number;
-}
 
 export class EmbeddingService {
     private embeddings: OpenAIEmbeddings;

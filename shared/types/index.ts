@@ -9,8 +9,14 @@ export type {
     Message,
     MessageSource,
     Conversation,
-    SourceMetadata
+    SourceChunk,
+    SourceMetadata,
+    SourceRow,
+    SourceType
 } from './entities';
+
+// Retrieval types
+export type { RetrievedChunk, MatchChunkRow } from './retrieval';
 
 // API types
 export type {

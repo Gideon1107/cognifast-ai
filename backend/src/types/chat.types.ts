@@ -1,11 +1,11 @@
-import { RetrievedChunk as RetrievedChunkType } from '../services/retrieval.service';
-
 // Import and re-export shared types (used by frontend too)
 import type {
     MessageRole,
     Message,
     MessageSource,
     Conversation,
+    RetrievedChunk,
+    SourceType,
     StartConversationRequest,
     StartConversationResponse,
     SendMessageRequest,
@@ -22,6 +22,8 @@ export type {
     Message,
     MessageSource,
     Conversation,
+    RetrievedChunk,
+    SourceType,
     StartConversationRequest,
     StartConversationResponse,
     SendMessageRequest,
@@ -34,14 +36,9 @@ export type {
 };
 
 /**
- * Re-export for convenience
- */
-export type RetrievedChunk = RetrievedChunkType;
-
-/**
  * Router agent decision types
  */
-export type RouterDecision = 'retrieve' | 'direct_answer' | 'clarify';
+export type RouterDecision = 'retrieve' | 'direct_answer' | 'clarify' | 'identity_block';
 
 /**
  * Response quality assessment
