@@ -349,6 +349,79 @@ export class RetrievalService {
     }
 
     /**
+     * Get a balanced random sample of chunks across multiple sources (for quiz generation).
+     * Distributes the limit evenly across sources so every source is represented,
+     * then randomises within each source so quizzes vary each time.
+     *
+     * @param sourceIds - Source IDs to sample from
+     * @param limit - Total number of chunks to return (default 20)
+     */
+    async getBalancedRandomChunks(sourceIds: string[], limit: number = 20): Promise<RetrievedChunk[]> {
+        try {
+            if (sourceIds.length === 0) return [];
+
+            const perSource = Math.ceil(limit / sourceIds.length);
+
+            logger.info(
+                `Fetching up to ${limit} balanced random chunks (${perSource}/source) for ${sourceIds.length} source(s)`
+            );
+
+            const result = await pool.query<{
+                id: string;
+                source_id: string;
+                chunk_text: string;
+                chunk_index: number;
+            }>(
+                `SELECT id, source_id, chunk_text, chunk_index
+                 FROM (
+                     SELECT id, source_id, chunk_text, chunk_index,
+                            ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY RANDOM()) AS rn
+                     FROM source_chunks
+                     WHERE source_id = ANY($1::uuid[])
+                 ) sub
+                 WHERE rn <= $2
+                 ORDER BY RANDOM()
+                 LIMIT $3`,
+                [sourceIds, perSource, limit]
+            );
+
+            const rowArray = result.rows;
+
+            if (!rowArray || rowArray.length === 0) {
+                logger.warn(`No chunks found for sources: ${sourceIds.join(', ')}`);
+                return [];
+            }
+
+            logger.info(`Retrieved ${rowArray.length} balanced random chunks`);
+
+            // Enrich with source names / types
+            const uniqueSourceIds = [...new Set(rowArray.map(c => c.source_id))];
+            const sourceRows = await db
+                .select({ id: sources.id, originalName: sources.originalName, fileType: sources.fileType })
+                .from(sources)
+                .where(inArray(sources.id, uniqueSourceIds));
+
+            const sourceNameMap = new Map(sourceRows.map(s => [s.id, s.originalName]));
+            const sourceTypeMap = new Map(
+                sourceRows.map(s => [s.id, s.fileType as SourceType])
+            );
+
+            return rowArray.map(chunk => ({
+                id: chunk.id,
+                sourceId: chunk.source_id,
+                sourceName: sourceNameMap.get(chunk.source_id) ?? 'Unknown',
+                sourceType: sourceTypeMap.get(chunk.source_id),
+                chunkText: chunk.chunk_text,
+                chunkIndex: chunk.chunk_index,
+                similarity: 1.0,
+            }));
+        } catch (error: any) {
+            logger.error(`Failed to get balanced random chunks: ${error.message}`);
+            throw new Error(`Failed to get balanced random chunks: ${error.message}`);
+        }
+    }
+
+    /**
      * Get specific chunks by their IDs (for citation retrieval)
      */
     async getChunksByIds(chunkIds: string[]): Promise<RetrievedChunk[]> {

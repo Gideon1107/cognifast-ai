@@ -1,5 +1,6 @@
 /**
- * Question Generator Agent - Generates quiz questions from extracted concepts
+ * Question Generator Agent - Extracts concepts AND generates quiz questions
+ * On retry it only generates replacement questions for the deficit.
  */
 
 import { ChatOpenAI } from "@langchain/openai";
@@ -24,149 +25,267 @@ export class QuestionGeneratorAgent {
     }
 
     /**
-     * Generate questions from concepts
+     * Generate questions (and extract concepts on first run).
+     * On retry, only generates replacement questions for the deficit.
      */
     async execute(state: QuizGenerationState): Promise<Partial<QuizGenerationState>> {
         const startTime = Date.now();
-        logger.info(`Generating ${state.numQuestions} questions from ${state.concepts.length} concepts...`);
+        const isRetry = state.retryCount > 0;
+        const contextText = state.metadata?.contextText || '';
+
+        if (!contextText) {
+            logger.warn('No contextText in state metadata');
+            return {
+                questions: [],
+                concepts: [],
+                metadata: {
+                    ...state.metadata,
+                    questionGenerationTime: Date.now() - startTime,
+                },
+            };
+        }
 
         try {
-            if (state.concepts.length === 0) {
-                logger.warn('No concepts provided for question generation');
+            if (isRetry) {
+                // --- RETRY: generate only the deficit ---
+                const deficit = state.metadata?.deficit ?? state.numQuestions;
+                const coveredConcepts = (state.metadata?.validQuestions ?? []).map(q => q.concept);
+                const toGenerate = deficit + OVER_GENERATE_COUNT;
+
+                logger.info(`Retry ${state.retryCount}: generating ${toGenerate} replacement questions (deficit=${deficit})`);
+
+                const prompt = this.buildRetryPrompt(
+                    state.concepts,
+                    coveredConcepts,
+                    toGenerate,
+                    contextText,
+                );
+                const response = await this.llm.invoke(prompt);
+                const content = response.content.toString();
+                const questions = this.parseQuestions(content, state.concepts);
+
+                const elapsed = Date.now() - startTime;
+                logger.info(`Retry generated ${questions.length} questions in ${elapsed}ms`);
+
                 return {
-                    questions: [],
+                    questions,
                     metadata: {
                         ...state.metadata,
-                        questionGenerationTime: Date.now() - startTime
-                    }
+                        questionGenerationTime: elapsed,
+                    },
                 };
             }
 
-            // Get chunk text for context
-            const chunks = (state.metadata as any).chunks || [];
-            const contextText = chunks
-                .slice(0, 15)
-                .map((c: any) => c.chunkText)
-                .join('\n\n');
-
+            // --- FIRST RUN: extract concepts + generate questions in one call ---
             const toGenerate = state.numQuestions + OVER_GENERATE_COUNT;
-            const prompt = this.buildPrompt(state.concepts, toGenerate, contextText);
-            
+            logger.info(`Generating ${toGenerate} questions (with concept extraction) from ${state.metadata.totalChunks} chunks...`);
+
+            const prompt = this.buildCombinedPrompt(toGenerate, state.numQuestions, contextText);
             const response = await this.llm.invoke(prompt);
             const content = response.content.toString();
 
-            // Parse questions from response
-            const questions = this.parseQuestions(content, state.concepts);
-            
+            // Parse combined response
+            const { concepts, questions } = this.parseCombinedResponse(content);
+
             const elapsed = Date.now() - startTime;
-            logger.info(`Generated ${questions.length} questions in ${elapsed}ms`);
+            logger.info(`Extracted ${concepts.length} concepts and generated ${questions.length} questions in ${elapsed}ms`);
 
             return {
+                concepts,
                 questions,
                 metadata: {
                     ...state.metadata,
-                    questionGenerationTime: elapsed
-                }
+                    questionGenerationTime: elapsed,
+                },
             };
-
         } catch (error: any) {
             logger.error(`Error generating questions: ${error.message}`);
             return {
                 questions: [],
                 metadata: {
                     ...state.metadata,
-                    error: error.message
-                }
+                    error: error.message,
+                },
             };
         }
     }
 
-    private buildPrompt(concepts: string[], numQuestions: number, contextText: string): string {
-        const conceptList = concepts.map((c, i) => `${i + 1}. ${c}`).join('\n');
-        
-        return `You are an expert quiz creator for any subject (STEM, humanities, business, etc.). Generate exactly ${numQuestions} high-quality quiz questions from the concepts and source material below. Write instructions that work for any topic, not just one subject.
+    // ---------------------------------------------------------------
+    // Prompts
+    // ---------------------------------------------------------------
 
-Concepts to cover:
+    /**
+     * extract concepts THEN generate questions in one call.
+     */
+    private buildCombinedPrompt(numQuestions: number, requestedQuestions: number, contextText: string): string {
+        const numConcepts = Math.min(requestedQuestions * 2, 30);
+
+        return `You are an expert educator and quiz creator. Perform TWO tasks from the source material below.
+
+SOURCE MATERIAL:
+${contextText}
+
+─── TASK 1: CONCEPT EXTRACTION ───
+Extract the ${numConcepts} most important, quiz-worthy concepts.
+- Factual, testable, specific, and concrete
+- Important to understanding the material
+- Each concept: a short name + brief description
+
+─── TASK 2: QUESTION GENERATION ───
+Generate exactly ${numQuestions} high-quality quiz questions covering those concepts.
+
+Quality rules:
+1. QUESTION VARIETY: Use diverse question formats - don't repeat the same phrasing. Mix what/which/how/why/when.
+2. ONE CONCEPT PER QUESTION: Each question tests one specific concept.
+3. DIFFICULTY: Require real understanding. Use plausible distractors.
+4. EQUATIONS AND FORMULAS: If the content contains equations or formulas, include questions that test understanding of them. Use LaTeX: $CO_2$, $H_2O$, $\\frac{a}{b}$, $\\rightarrow$.
+5. FORMAT: Prefer multiple_choice (4 options). Use true_false only for straightforward factual claims.
+6. LaTeX: Use $...$ for all chemical formulas and math. DO NOT wrap LaTeX in markdown.
+
+OUTPUT FORMAT — Output ONLY valid JSON with this exact structure:
+{
+  "concepts": [
+    "Concept Name: Brief description",
+    "Concept Name: Brief description"
+  ],
+  "questions": [
+    {
+      "type": "multiple_choice",
+      "question": "In the context of [topic], what is...?",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctIndex": 2,
+      "concept": "Concept Name"
+    },
+    {
+      "type": "true_false",
+      "question": "A statement that is definitively true or false.",
+      "options": ["True", "False"],
+      "correctIndex": 0,
+      "concept": "Concept Name"
+    }
+  ]
+}
+
+IMPORTANT:
+- correctIndex is 0-based. Vary it across questions.
+- For true_false, options must be exactly ["True", "False"].
+- For reaction equations: never use the exact reverse as a wrong option.
+- Output ONLY the JSON object, no other text or markdown.
+
+Generate now:`;
+    }
+
+    /**
+     * Retry prompt: generate only deficit replacement questions, avoiding covered concepts.
+     */
+    private buildRetryPrompt(
+        allConcepts: string[],
+        coveredConcepts: string[],
+        numQuestions: number,
+        contextText: string,
+    ): string {
+        const coveredSet = new Set(coveredConcepts.map(c => c.toLowerCase()));
+        const uncoveredConcepts = allConcepts.filter(c => !coveredSet.has(c.toLowerCase()));
+
+        // Use uncovered concepts if available, otherwise reuse all
+        const conceptsToUse = uncoveredConcepts.length > 0 ? uncoveredConcepts : allConcepts;
+        const conceptList = conceptsToUse.map((c, i) => `${i + 1}. ${c}`).join('\n');
+
+        return `You are an expert quiz creator. Generate exactly ${numQuestions} NEW quiz questions from the concepts and source material below. These are REPLACEMENT questions — do not repeat questions that were already generated.
+
+Concepts to cover (prioritise uncovered ones):
 ${conceptList}
 
-Source Material (use for accuracy and wording):
-${contextText.substring(0, 8000)}
+Source Material:
+${contextText}
 
-Quality rules (apply to any domain):
-1. QUESTION VARIETY: Use diverse question formats - don't repeat the same phrasing. Be creative while keeping the correct answer unambiguous. Examples:
-   - "What is the primary function of [X]?"
-   - "Which of the following best describes [X]?"
-   - "What distinguishes [X] from [Y]?"
-   - "Which statement about [X] is correct?"
-   - "What is the main purpose of [X]?"
-   - "How does [X] affect [Y]?"
-   - "Why is [X] important for [Y]?"
-   - "When does [X] occur?"
-   - "Which factor most influences [X]?"
-   - "What is the relationship between [X] and [Y]?"
-   Mix question types (what/which/how/why/when) and vary your phrasing across questions. The key is that the correct answer must be clearly right; avoid ambiguity.
-2. ONE CONCEPT PER QUESTION: Each question must test exactly one listed concept and one specific aspect of it. Avoid vague or overly broad questions.
-3. DIFFICULTY: Do not make questions trivially easy. Require real understanding to answer. Avoid obvious wrong options; use plausible distractors that a knowledgeable person could eliminate but a guesser could not. Distractors should draw on related ideas, common misconceptions, or statements that are true in another context but wrong here.
-4. EQUATIONS AND FORMULAS (when available): If a concept or the source material includes equations, formulas, chemical reactions, or mathematical expressions, include questions that test the user's understanding of them. Where relevant:
-   - Phrase the question so it asks about an equation or formula (e.g. "Which equation correctly represents...?", "What is the correct formula for...?").
-   - Put equations and formulas in both the question and the answer options using LaTeX (e.g. options that are different equations, so the user must identify the correct one).
-   - Only add equation-based questions when the concept and source material actually contain equations or formulas; do not force them for purely conceptual topics.
-   - For reaction equations: do NOT use the exact reverse of the correct equation as a distractor (e.g. if the correct answer is $6CO_2 + 6H_2O \\rightarrow C_6H_{12}O_6 + 6O_2$, do not use $6O_2 + 6H_2O \\rightarrow 6CO_2 + C_6H_{12}O_6$ as an option—that is the reverse reaction). Use other plausible errors instead: wrong coefficients, wrong product or reactant, missing term, or a different but wrong equation from the same topic.
-5. FORMAT: Prefer multiple_choice (4 options) when the concept has nuance or multiple plausible answers; use true_false only for straightforward factual claims.
-6. LaTeX (use inline LaTeX for all formulas and chemical elements):
-   - Chemical formulas and elements: $CO_2$, $H_2O$, $C_6H_{12}O_6$, $O_2$ (not CO2, H2O, O2) in questions and options
-   - Mathematical expressions: $6CO_2 + 6H_2O$, reaction arrows: \\rightarrow or \\leftarrow (e.g. $6CO_2 + 6H_2O \\rightarrow C_6H_{12}O_6 + 6O_2$)
-   - Subscripts: $H_2O$ not H2O; superscripts: $x^2$, fractions: $\\frac{a}{b}$
-   - Block equations (when appropriate): \\[ and \\] for display equations
-   - DO NOT wrap LaTeX in markdown (no **$...$** or _..._). ALWAYS use LaTeX for chemical formulas: $CO_2$ not CO2, $H_2O$ not H2O, $O_2$ not O2
+Quality rules:
+1. QUESTION VARIETY: Diverse formats, mix what/which/how/why/when.
+2. ONE CONCEPT PER QUESTION.
+3. DIFFICULTY: Plausible distractors, require real understanding.
+4. LaTeX: $...$ for formulas and chemical elements.
+5. FORMAT: Prefer multiple_choice (4 options). true_false only for straightforward facts.
 
 Output EXACTLY in this JSON format (valid JSON array):
 [
   {
     "type": "multiple_choice",
-    "question": "In the context of [topic], what is...?",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "question": "...",
+    "options": ["A", "B", "C", "D"],
     "correctIndex": 2,
-    "concept": "Concept Name"
-  },
-  {
-    "type": "true_false",
-    "question": "A statement that is definitively true or false.",
-    "options": ["True", "False"],
-    "correctIndex": 0,
     "concept": "Concept Name"
   }
 ]
 
 IMPORTANT:
-- correctIndex is 0-based. Vary it (0, 1, 2, 3) across questions so the correct answer is NOT always first (option A).
-- For true_false, options must be exactly ["True", "False"]
-- LaTeX: use $...$ for formulas and chemical elements (e.g. $CO_2$, $H_2O$, \\rightarrow for arrows). Same convention as chat responses.
-- For "which equation" questions: never use the reverse reaction as a wrong option (e.g. no $6O_2 + 6H_2O \\rightarrow 6CO_2 + C_6H_{12}O_6$ when the correct equation is photosynthesis). Use wrong coefficients, wrong terms, or a different wrong equation.
-- Output ONLY the JSON array, no other text or markdown
+- correctIndex is 0-based. Vary it across questions.
+- Output ONLY the JSON array, no other text.
 
-Generate exactly ${numQuestions} questions now:`;
+Generate ${numQuestions} questions now:`;
     }
 
+    // ---------------------------------------------------------------
+    // Parsers
+    // ---------------------------------------------------------------
+
+    /**
+     * Parse the combined concepts + questions JSON response.
+     */
+    private parseCombinedResponse(response: string): { concepts: string[]; questions: Question[] } {
+        try {
+            let jsonStr = response;
+            // Try to extract JSON object
+            const objMatch = response.match(/\{[\s\S]*\}/);
+            if (objMatch) {
+                jsonStr = objMatch[0];
+            }
+
+            const parsed = JSON.parse(jsonStr);
+
+            // Parse concepts
+            const concepts: string[] = [];
+            if (Array.isArray(parsed.concepts)) {
+                for (const c of parsed.concepts) {
+                    const name = typeof c === 'string' ? c.split(':')[0].trim() : '';
+                    if (name && name.length > 2) concepts.push(name);
+                }
+            }
+
+            // Parse questions
+            const questions = Array.isArray(parsed.questions)
+                ? this.parseQuestions(JSON.stringify(parsed.questions), concepts)
+                : [];
+
+            return { concepts, questions };
+        } catch (error: any) {
+            logger.error(`Failed to parse combined response: ${error.message}`);
+            logger.debug(`Response was: ${response.substring(0, 500)}...`);
+
+            // Fallback: try to parse as just an array of questions
+            const questions = this.parseQuestions(response, []);
+            return { concepts: [], questions };
+        }
+    }
+
+    /**
+     * Parse a JSON array of questions (used for both first-run and retry).
+     */
     private parseQuestions(response: string, concepts: string[]): Question[] {
         /**
          * Fix LaTeX when the LLM drops backslashes (e.g. ightarrow -> \rightarrow)
-         * This is a safety net - the LLM often omits backslashes even when instructed not to.
          */
         const fixLatexBackslashes = (text: string): string => {
             if (!text || typeof text !== 'string') return text;
             return text
-                // Fix broken arrows: "ightarrow" -> "\rightarrow", "eftarrow" -> "\leftarrow"
                 .replace(/ightarrow/g, '\\rightarrow')
                 .replace(/eftarrow/g, '\\leftarrow')
-                // Fix broken commands: "ext{" -> "\text{", "rac{" -> "\frac{"
                 .replace(/(?<![a-zA-Z])ext\s*\{/g, '\\text{')
                 .replace(/(?<![a-zA-Z])rac\s*\{/g, '\\frac{')
                 .replace(/(?<![a-zA-Z])frac\s*\{/g, '\\frac{');
         };
 
         /**
-         * Shuffle array and return new array plus the new index of the item that was at correctOldIndex
+         * Shuffle array and return new array plus the new index of the item at correctOldIndex
          */
         const shuffleOptions = <T>(arr: T[], correctOldIndex: number): { shuffled: T[]; newCorrectIndex: number } => {
             const correctItem = arr[correctOldIndex];
@@ -181,7 +300,6 @@ Generate exactly ${numQuestions} questions now:`;
         };
 
         try {
-            // Extract JSON from response (handle markdown code blocks)
             let jsonStr = response;
             const jsonMatch = response.match(/\[[\s\S]*\]/);
             if (jsonMatch) {
@@ -189,7 +307,7 @@ Generate exactly ${numQuestions} questions now:`;
             }
 
             const parsed = JSON.parse(jsonStr);
-            
+
             if (!Array.isArray(parsed)) {
                 logger.error('Response is not an array');
                 return [];
@@ -198,22 +316,18 @@ Generate exactly ${numQuestions} questions now:`;
             const questions: Question[] = [];
 
             for (const item of parsed) {
-                // Validate required fields
                 if (!item.question || !item.options || !Array.isArray(item.options)) {
                     logger.warn('Skipping invalid question: missing required fields');
                     continue;
                 }
 
-                // Validate type
                 const type: QuestionType = item.type === 'true_false' ? 'true_false' : 'multiple_choice';
 
-                // Fix LaTeX backslashes that the LLM drops
                 let questionText = fixLatexBackslashes(item.question);
                 let options = (item.options as string[]).map(opt => fixLatexBackslashes(opt));
 
-                // Validate correctIndex
-                let correctIndex = typeof item.correctIndex === 'number' 
-                    ? item.correctIndex 
+                let correctIndex = typeof item.correctIndex === 'number'
+                    ? item.correctIndex
                     : 0;
 
                 if (correctIndex < 0 || correctIndex >= options.length) {
@@ -227,7 +341,6 @@ Generate exactly ${numQuestions} questions now:`;
                     correctIndex = newCorrectIndex;
                 }
 
-                // Find matching concept
                 const concept = item.concept || concepts[0] || 'General';
 
                 questions.push({
@@ -236,12 +349,11 @@ Generate exactly ${numQuestions} questions now:`;
                     question: questionText,
                     options,
                     correctIndex,
-                    concept
+                    concept,
                 });
             }
 
             return questions;
-
         } catch (error: any) {
             logger.error(`Failed to parse questions JSON: ${error.message}`);
             logger.debug(`Response was: ${response.substring(0, 500)}...`);
