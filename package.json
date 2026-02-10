@@ -12,3 +12,4 @@
     "db:health": "docker exec cognifast-db pg_isready -U cognifast -d cognifast_db"
   }
 }
+
