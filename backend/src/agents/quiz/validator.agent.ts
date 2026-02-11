@@ -54,6 +54,27 @@ export class ValidatorAgent {
             // Use the pre-built contextText (same context the generator saw)
             const contextText = state.metadata?.contextText || '';
 
+            if (!contextText) {
+                logger.warn('No contextText available — skipping LLM validation, assuming all questions valid');
+                const previousValid: Question[] = state.metadata?.validQuestions ?? [];
+                const allValid = [...previousValid, ...state.questions];
+                return {
+                    questions: allValid,
+                    validationResults: state.questions.map(q => ({
+                        questionId: q.id,
+                        isValid: true,
+                        issues: ['Validation skipped: no source context available'],
+                    })),
+                    needsRegeneration: false,
+                    metadata: {
+                        ...state.metadata,
+                        validationTime: Date.now() - startTime,
+                        validQuestions: allValid,
+                        deficit: 0,
+                    },
+                };
+            }
+
             const prompt = this.buildPrompt(state.questions, contextText);
 
             const response = await this.llm.invoke(prompt);
