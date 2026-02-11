@@ -1,6 +1,5 @@
 import { StateGraph, END, START, Annotation } from '@langchain/langgraph';
 import { QuizGenerationState, Question, ValidationResult } from '../types/quiz.types';
-import { conceptExtractorAgent } from '../agents/quiz/concept-extractor.agent';
 import { questionGeneratorAgent } from '../agents/quiz/question-generator.agent';
 import { validatorAgent } from '../agents/quiz/validator.agent';
 import { createLogger } from '../utils/logger';
@@ -11,15 +10,14 @@ const logger = createLogger('QUIZ-GRAPH');
  * Quiz Generation StateGraph
  * 
  * Flow:
- * START → ConceptExtractor → QuestionGenerator → Validator → END (or retry Generator)
+ * START → QuestionGenerator → Validator → END (or retry Generator for deficit only)
  * 
  * Nodes:
- * - conceptExtractor: Extracts key concepts from document chunks
- * - questionGenerator: Creates quiz questions from concepts
- * - validator: Validates questions for quality and accuracy
+ * - questionGenerator: Extracts concepts + creates quiz questions
+ * - validator: Validates questions, accumulates valid ones, calculates deficit
  * 
  * Edges:
- * - ConceptExtractor → QuestionGenerator (always)
+ * - START → QuestionGenerator (always)
  * - QuestionGenerator → Validator (always)
  * - Validator → QuestionGenerator (if needsRegeneration and retries < max)
  * - Validator → END (if valid or max retries reached)
@@ -41,35 +39,34 @@ const QuizStateAnnotation = Annotation.Root({
 // Define the graph
 const quizGraphBuilder = new StateGraph(QuizStateAnnotation);
 
-// Add nodes
-quizGraphBuilder.addNode('conceptExtractor' as any, conceptExtractorAgent as any);
+// Add nodes (conceptExtractor removed — merged into questionGenerator)
 quizGraphBuilder.addNode('questionGenerator' as any, questionGeneratorAgent as any);
 quizGraphBuilder.addNode('validator' as any, validatorAgent as any);
 
-// Set entry point: START → ConceptExtractor
-quizGraphBuilder.addEdge(START, 'conceptExtractor' as any);
-
-// ConceptExtractor → QuestionGenerator
-quizGraphBuilder.addEdge('conceptExtractor' as any, 'questionGenerator' as any);
+// Set entry point: START → QuestionGenerator
+quizGraphBuilder.addEdge(START, 'questionGenerator' as any);
 
 // QuestionGenerator → Validator
 quizGraphBuilder.addEdge('questionGenerator' as any, 'validator' as any);
 
-// Validator → END or QuestionGenerator (retry)
+// Validator → END or QuestionGenerator (retry for deficit only)
 quizGraphBuilder.addConditionalEdges(
     'validator' as any,
     (state: any) => {
         const MAX_RETRIES = 2;
         
         if (state.needsRegeneration && state.retryCount < MAX_RETRIES) {
-            logger.info(`Regenerating questions (attempt ${state.retryCount + 1}/${MAX_RETRIES})`);
+            logger.info(`Regenerating deficit questions (attempt ${state.retryCount + 1}/${MAX_RETRIES})`);
             return 'questionGenerator';
         }
         
-        if (state.questions.length === 0) {
+        const totalValid = state.metadata?.validQuestions?.length
+            ?? state.questions?.length
+            ?? 0;
+        if (totalValid === 0) {
             logger.warn('No valid questions generated after all attempts');
         } else {
-            logger.info(`Quiz generation complete: ${state.questions.length} questions`);
+            logger.info(`Quiz generation complete: ${totalValid} total valid questions`);
         }
         
         return END;
@@ -82,7 +79,7 @@ export const quizGenerationGraph = quizGraphBuilder.compile();
 /**
  * Execute the quiz generation graph
  * 
- * @param initialState - The initial generation state with chunks in metadata
+ * @param initialState - The initial generation state with contextText in metadata
  * @returns The final state with generated questions
  */
 export async function executeQuizGenerationGraph(
@@ -114,7 +111,7 @@ export async function executeQuizGenerationGraph(
         };
         
         logger.info(`Quiz Generation completed in ${executionTime}ms`);
-        logger.info(`Generated ${finalResult.questions?.length || 0} questions`);
+        logger.info(`Total valid questions: ${(finalResult.metadata as any)?.validQuestions?.length ?? 0}`);
         
         return finalResult as QuizGenerationState;
         

@@ -47,14 +47,19 @@ export class QuizService {
         const sourceIds = convSourceRows.map(cs => cs.sourceId);
         logger.info(`Found ${sourceIds.length} source(s) for conversation`);
 
-        // 2. Fetch all chunks for these sources
-        const chunks = await this.retrievalService.getAllChunksForSources(sourceIds);
+        // 2. Fetch a balanced random sample of chunks (20 chunks spread across sources)
+        const chunks = await this.retrievalService.getBalancedRandomChunks(sourceIds, 20);
         if (chunks.length === 0) {
             throw new Error('No content found in conversation sources');
         }
-        logger.info(`Retrieved ${chunks.length} chunks for quiz generation`);
+        logger.info(`Retrieved ${chunks.length} balanced random chunks for quiz generation`);
 
-        // 3. Run quiz generation graph (concept extract → question gen → validate)
+        // 3. Build context
+        const contextText = chunks
+            .map((c, i) => `[Chunk ${i + 1} | ${c.sourceName}]\n${c.chunkText}`)
+            .join('\n\n');
+
+        // 4. Run quiz generation graph
         const initialState: QuizGenerationState = {
             conversationId,
             sourceIds,
@@ -67,23 +72,35 @@ export class QuizService {
             metadata: {
                 startTime: Date.now(),
                 totalChunks: chunks.length,
-                chunks,
+                contextText,
             },
         };
 
         const result = await executeQuizGenerationGraph(initialState);
 
-        if (!result.questions || result.questions.length === 0) {
+        // 5. Collect final questions: valid questions accumulated + last batch
+        const validFromRetries = result.metadata?.validQuestions ?? [];
+        const allQuestions = [...validFromRetries, ...(result.questions ?? [])];
+
+        // Deduplicate by id (validator may have already included some)
+        const seen = new Set<string>();
+        const uniqueQuestions = allQuestions.filter(q => {
+            if (seen.has(q.id)) return false;
+            seen.add(q.id);
+            return true;
+        });
+
+        if (uniqueQuestions.length === 0) {
             throw new Error('Failed to generate quiz questions');
         }
 
-        if (result.questions.length < numQuestions) {
-            logger.warn(`Only ${result.questions.length} valid questions after validation (requested ${numQuestions})`);
-            throw new Error(`Could not generate enough valid questions (got ${result.questions.length}, needed ${numQuestions}). Please try again.`);
+        if (uniqueQuestions.length < numQuestions) {
+            logger.warn(`Only ${uniqueQuestions.length} valid questions after validation (requested ${numQuestions})`);
+            throw new Error(`Could not generate enough valid questions (got ${uniqueQuestions.length}, needed ${numQuestions}). Please try again.`);
         }
 
-        // 4. Limit to requested number and persist quiz to database
-        const finalQuestions = result.questions.slice(0, numQuestions);
+        // 6. Limit to requested number and persist quiz to database
+        const finalQuestions = uniqueQuestions.slice(0, numQuestions);
 
         const [inserted] = await db
             .insert(quizzes)

@@ -73,7 +73,9 @@ export interface QuizGenerationState {
         startTime?: number;
         endTime?: number;
         totalChunks?: number;
-        chunks?: any[]; // Chunks passed to agents for processing
+        contextText?: string; 
+        validQuestions?: Question[];
+        deficit?: number; // Number of replacement questions needed on retry
         [key: string]: any; // Allow additional properties
     };
 }

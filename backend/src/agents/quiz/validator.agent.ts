@@ -1,5 +1,7 @@
 /**
- * Validator Agent - Validates generated quiz questions for quality and accuracy
+ * Validator Agent - Validates generated quiz questions for quality and accuracy.
+ * Accumulates valid questions across retries and calculates the deficit for the
+ * question generator to fill on the next pass.
  */
 
 import { ChatOpenAI } from "@langchain/openai";
@@ -7,6 +9,9 @@ import { QuizGenerationState, Question, ValidationResult } from "../../types/qui
 import { createLogger } from '../../utils/logger';
 
 const logger = createLogger('QUESTION-VALIDATOR');
+
+/** Over-generate buffer (must match question-generator) */
+const OVER_GENERATE_COUNT = 3;
 
 export class ValidatorAgent {
     private llm: ChatOpenAI;
@@ -29,75 +34,116 @@ export class ValidatorAgent {
         try {
             if (state.questions.length === 0) {
                 logger.warn('No questions to validate');
+                const previousValid: Question[] = state.metadata?.validQuestions ?? [];
+                const target = state.numQuestions + OVER_GENERATE_COUNT;
+                const deficit = Math.max(0, target - previousValid.length);
+                const needsRegeneration = deficit > 0 && state.retryCount < 2;
                 return {
                     validationResults: [],
-                    needsRegeneration: true,
+                    needsRegeneration,
+                    retryCount: needsRegeneration ? state.retryCount + 1 : state.retryCount,
                     metadata: {
                         ...state.metadata,
-                        validationTime: Date.now() - startTime
-                    }
+                        validationTime: Date.now() - startTime,
+                        validQuestions: previousValid,
+                        deficit,
+                    },
                 };
             }
 
-            // Get chunk text for fact-checking
-            const chunks = (state.metadata as any).chunks || [];
-            const contextText = chunks
-                .slice(0, 10)
-                .map((c: any) => c.chunkText)
-                .join('\n\n');
+            // Use the pre-built contextText (same context the generator saw)
+            const contextText = state.metadata?.contextText || '';
+
+            if (!contextText) {
+                logger.warn('No contextText available — skipping LLM validation, assuming all questions valid');
+                const previousValid: Question[] = state.metadata?.validQuestions ?? [];
+                const allValid = [...previousValid, ...state.questions];
+                return {
+                    questions: allValid,
+                    validationResults: state.questions.map(q => ({
+                        questionId: q.id,
+                        isValid: true,
+                        issues: ['Validation skipped: no source context available'],
+                    })),
+                    needsRegeneration: false,
+                    metadata: {
+                        ...state.metadata,
+                        validationTime: Date.now() - startTime,
+                        validQuestions: allValid,
+                        deficit: 0,
+                    },
+                };
+            }
 
             const prompt = this.buildPrompt(state.questions, contextText);
-            
+
             const response = await this.llm.invoke(prompt);
             const content = response.content.toString();
 
             // Parse validation results
             const validationResults = this.parseValidationResults(content, state.questions);
-            
-            // Filter out invalid questions
-            const validQuestions = state.questions.filter(q => {
+
+            // Separate valid and invalid questions from this batch
+            const validBatch = state.questions.filter(q => {
                 const result = validationResults.find(r => r.questionId === q.id);
                 return result?.isValid !== false;
             });
+            const invalidCount = state.questions.length - validBatch.length;
 
-            // Determine if we need regeneration
-            const invalidCount = state.questions.length - validQuestions.length;
-            const needsRegeneration = validQuestions.length < state.numQuestions && 
-                                       state.retryCount < 2;
+            // Accumulate valid questions across retries
+            const previousValid: Question[] = state.metadata?.validQuestions ?? [];
+            const allValid = [...previousValid, ...validBatch];
+
+            // How many more do we need? (target = numQuestions + over-generate buffer)
+            const target = state.numQuestions + OVER_GENERATE_COUNT;
+            const deficit = Math.max(0, target - allValid.length);
+
+            const needsRegeneration = deficit > 0 && state.retryCount < 2;
 
             const elapsed = Date.now() - startTime;
-            logger.info(`Validation complete in ${elapsed}ms: ${validQuestions.length}/${state.questions.length} valid`);
+            logger.info(
+                `Validation complete in ${elapsed}ms: ${validBatch.length}/${state.questions.length} valid this batch, ` +
+                `${allValid.length} total accumulated, deficit=${deficit}`
+            );
 
             if (invalidCount > 0) {
                 logger.warn(`Filtered out ${invalidCount} invalid questions`);
             }
 
             return {
-                questions: validQuestions,
+                // On retry the generator will produce new questions into state.questions;
+                // valid ones from THIS batch are stashed in metadata.validQuestions.
+                questions: needsRegeneration ? [] : allValid,
                 validationResults,
                 needsRegeneration,
                 retryCount: needsRegeneration ? state.retryCount + 1 : state.retryCount,
                 metadata: {
                     ...state.metadata,
                     validationTime: elapsed,
-                    invalidCount
-                }
+                    invalidCount,
+                    validQuestions: allValid,
+                    deficit,
+                },
             };
-
         } catch (error: any) {
             logger.error(`Error validating questions: ${error.message}`);
             // On validation error, keep all questions but mark for potential review
+            const previousValid: Question[] = state.metadata?.validQuestions ?? [];
+            const allValid = [...previousValid, ...state.questions];
             return {
+                questions: allValid,
                 validationResults: state.questions.map(q => ({
                     questionId: q.id,
                     isValid: true, // Assume valid if validation fails
-                    issues: ['Validation skipped due to error']
+                    issues: ['Validation skipped due to error'],
                 })),
                 needsRegeneration: false,
                 metadata: {
                     ...state.metadata,
-                    validationError: error.message
-                }
+                    validationError: error.message,
+                    validQuestions: allValid,
+                    deficit: 0,
+                },
             };
         }
     }
@@ -109,7 +155,7 @@ export class ValidatorAgent {
             type: q.type,
             question: q.question,
             options: q.options,
-            correctIndex: q.correctIndex
+            correctIndex: q.correctIndex,
         })), null, 2);
 
         return `You are a quiz quality validator. Validate the following quiz questions against the source material.
@@ -146,7 +192,6 @@ Output ONLY the JSON array:`;
 
     private parseValidationResults(response: string, questions: Question[]): ValidationResult[] {
         try {
-            // Extract JSON from response
             let jsonStr = response;
             const jsonMatch = response.match(/\[[\s\S]*\]/);
             if (jsonMatch) {
@@ -154,31 +199,27 @@ Output ONLY the JSON array:`;
             }
 
             const parsed = JSON.parse(jsonStr);
-            
+
             if (!Array.isArray(parsed)) {
-                // Return all as valid if parsing fails
                 return questions.map(q => ({
                     questionId: q.id,
                     isValid: true,
-                    issues: []
+                    issues: [],
                 }));
             }
 
-            // Map parsed results to ValidationResult type
             return parsed.map((item: any) => ({
                 questionId: item.id || '',
                 isValid: item.isValid !== false,
                 issues: Array.isArray(item.issues) ? item.issues : [],
-                suggestions: item.suggestions
+                suggestions: item.suggestions,
             }));
-
         } catch (error: any) {
             logger.error(`Failed to parse validation JSON: ${error.message}`);
-            // Return all as valid on parse error
             return questions.map(q => ({
                 questionId: q.id,
                 isValid: true,
-                issues: ['Validation parsing failed']
+                issues: ['Validation parsing failed'],
             }));
         }
     }
