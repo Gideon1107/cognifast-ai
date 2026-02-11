@@ -60,10 +60,10 @@ quizGraphBuilder.addConditionalEdges(
             return 'questionGenerator';
         }
         
-        if (state.questions.length === 0 && (!state.metadata?.validQuestions || state.metadata.validQuestions.length === 0)) {
+        const totalValid = state.metadata?.validQuestions?.length ?? 0;
+        if (totalValid === 0) {
             logger.warn('No valid questions generated after all attempts');
         } else {
-            const totalValid = (state.metadata?.validQuestions?.length ?? 0) + (state.questions?.length ?? 0);
             logger.info(`Quiz generation complete: ${totalValid} total valid questions`);
         }
         
@@ -109,8 +109,7 @@ export async function executeQuizGenerationGraph(
         };
         
         logger.info(`Quiz Generation completed in ${executionTime}ms`);
-        logger.info(`Generated ${finalResult.questions?.length || 0} questions in final batch`);
-        logger.info(`Valid questions accumulated: ${(finalResult.metadata as any)?.validQuestions?.length ?? 0}`);
+        logger.info(`Total valid questions: ${(finalResult.metadata as any)?.validQuestions?.length ?? 0}`);
         
         return finalResult as QuizGenerationState;
         
