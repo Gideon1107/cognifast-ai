@@ -37,10 +37,11 @@ export class ValidatorAgent {
                 const previousValid: Question[] = state.metadata?.validQuestions ?? [];
                 const target = state.numQuestions + OVER_GENERATE_COUNT;
                 const deficit = Math.max(0, target - previousValid.length);
+                const needsRegeneration = deficit > 0 && state.retryCount < 2;
                 return {
                     validationResults: [],
-                    needsRegeneration: deficit > 0 && state.retryCount < 2,
-                    retryCount: state.retryCount + 1,
+                    needsRegeneration,
+                    retryCount: needsRegeneration ? state.retryCount + 1 : state.retryCount,
                     metadata: {
                         ...state.metadata,
                         validationTime: Date.now() - startTime,
