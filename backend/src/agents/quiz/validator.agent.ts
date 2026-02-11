@@ -34,13 +34,18 @@ export class ValidatorAgent {
         try {
             if (state.questions.length === 0) {
                 logger.warn('No questions to validate');
+                const previousValid: Question[] = state.metadata?.validQuestions ?? [];
+                const target = state.numQuestions + OVER_GENERATE_COUNT;
+                const deficit = Math.max(0, target - previousValid.length);
                 return {
                     validationResults: [],
-                    needsRegeneration: true,
+                    needsRegeneration: deficit > 0 && state.retryCount < 2,
+                    retryCount: state.retryCount + 1,
                     metadata: {
                         ...state.metadata,
                         validationTime: Date.now() - startTime,
-                        deficit: state.numQuestions + OVER_GENERATE_COUNT,
+                        validQuestions: previousValid,
+                        deficit,
                     },
                 };
             }

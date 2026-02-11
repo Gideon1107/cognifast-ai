@@ -56,11 +56,13 @@ quizGraphBuilder.addConditionalEdges(
         const MAX_RETRIES = 2;
         
         if (state.needsRegeneration && state.retryCount < MAX_RETRIES) {
-            logger.info(`Regenerating deficit questions (attempt ${state.retryCount}/${MAX_RETRIES})`);
+            logger.info(`Regenerating deficit questions (attempt ${state.retryCount + 1}/${MAX_RETRIES})`);
             return 'questionGenerator';
         }
         
-        const totalValid = state.metadata?.validQuestions?.length ?? 0;
+        const totalValid = state.metadata?.validQuestions?.length
+            ?? state.questions?.length
+            ?? 0;
         if (totalValid === 0) {
             logger.warn('No valid questions generated after all attempts');
         } else {
