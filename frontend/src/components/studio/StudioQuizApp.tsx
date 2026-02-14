@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Trophy, RotateCcw, Maximize2, MessageSquareDot } from 'lucide-react';
+import { CheckCircle, XCircle, Trophy, RotateCcw, Maximize2, Minimize2, MessageSquareDot } from 'lucide-react';
 import { useQuizStore } from '../../store/useQuizStore';
 import { useChatStore } from '../../store';
 import { submitQuizAnswer } from '../../lib/api';
@@ -219,7 +219,11 @@ Help me understand why my answer was incorrect.`;
               title={isQuizExpanded ? 'Exit expanded quiz panel' : 'Expand quiz panel'}
               type="button"
             >
-              <Maximize2 className="w-4 h-4 text-gray-400" />
+              {isQuizExpanded ? (
+                <Minimize2 className="w-4 h-4 text-gray-400" />
+              ) : (
+                <Maximize2 className="w-4 h-4 text-gray-400" />
+              )}
             </button>
           </div>
         </div>
@@ -356,7 +360,11 @@ function QuizSummaryView({
             title={isQuizExpanded ? 'Exit expanded quiz panel' : 'Expand quiz panel'}
             type="button"
           >
-            <Maximize2 className="w-4 h-4 text-gray-400" />
+            {isQuizExpanded ? (
+              <Minimize2 className="w-4 h-4 text-gray-400" />
+            ) : (
+              <Maximize2 className="w-4 h-4 text-gray-400" />
+            )}
           </button>
         </div>
       </div>
