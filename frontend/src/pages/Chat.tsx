@@ -243,12 +243,12 @@ export function Chat() {
     return (
       <div className="h-screen flex flex-col bg-gray-50">
         <Navbar />
-        <div className="flex-1 flex items-center justify-center">
+        <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
             <p className="mt-4 text-gray-600">Loading conversation...</p>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
@@ -269,7 +269,7 @@ export function Chat() {
       />
 
       {/* 3-Column Layout */}
-      <div ref={containerRef} className="flex-1 flex overflow-hidden px-4 pt-2 pb-2">
+      <main id="main-content" tabIndex={-1} ref={containerRef} className="flex-1 flex overflow-hidden px-4 pt-2 pb-2">
         {/* Left Sidebar - Sources */}
         <div style={{ flex: `0 0 ${widths.sources}%`, minWidth: 0 }}>
           <SourcesPanel sources={sources} />
@@ -319,7 +319,7 @@ export function Chat() {
             onQuizClose={restoreStudioWidth}
           />
         </div>
-      </div>
+      </main>
     </div>
   );
 }

@@ -143,7 +143,11 @@ Help me understand why my answer was incorrect.`;
               Based on {sourceCount} source{sourceCount !== 1 ? 's' : ''}
             </p>
           </div>
-          <button className="p-1.5 hover:bg-gray-100 rounded transition-colors">
+          <button
+            className="p-1.5 hover:bg-gray-100 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            aria-label="Expand quiz panel"
+            type="button"
+          >
             <Maximize2 className="w-4 h-4 text-gray-400" />
           </button>
         </div>
@@ -174,7 +178,7 @@ Help me understand why my answer was incorrect.`;
                 disabled={hasAnswered || isSubmitting}
                 className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${getOptionStyles(index)} ${
                   !hasAnswered && !isSubmitting ? 'cursor-pointer' : 'cursor-default'
-                }`}
+                } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
               >
                 <span className="shrink-0 text-gray-500 font-medium">
                   {String.fromCharCode(65 + index)}.
@@ -204,7 +208,7 @@ Help me understand why my answer was incorrect.`;
             {!answer.correct ? (
               <button
                 onClick={handleExplain}
-                className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-full border border-blue-200 text-sm font-medium transition-colors cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-full border border-blue-200 text-sm font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               >
                 <MessageSquareDot className="w-4 h-4" />
                 Explain
@@ -214,7 +218,7 @@ Help me understand why my answer was incorrect.`;
             )}
             <button
               onClick={nextQuestion}
-              className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-full hover:bg-blue-700 transition-colors cursor-pointer"
+              className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-full hover:bg-blue-700 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             >
               {isLastQuestion ? 'Done' : 'Next'}
             </button>
@@ -303,14 +307,14 @@ function QuizSummaryView({
         <div className="flex gap-2">
           <button
             onClick={onRetake}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           >
             <RotateCcw className="w-4 h-4" />
             New Quiz
           </button>
           <button
             onClick={onDone}
-            className="flex-1 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
+            className="flex-1 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           >
             Done
           </button>

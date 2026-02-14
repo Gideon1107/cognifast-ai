@@ -116,8 +116,12 @@ export function ChatPanel({
     return parts.length > 0 ? parts : [{ type: 'text', content: text }];
   };
 
-  // Citation hover handlers
-  const handleCitationHover = (e: React.MouseEvent<HTMLSpanElement>, source: MessageSource) => {
+  // Citation interaction handlers
+  const showCitationTooltip = (
+    target: HTMLElement,
+    source: MessageSource,
+    withDelay = false
+  ) => {
     if (!source || !source.chunkText || source.chunkText.trim().length === 0) {
       return;
     }
@@ -131,7 +135,7 @@ export function ChatPanel({
       citationShowTimeoutRef.current = null;
     }
 
-    const rect = e.currentTarget.getBoundingClientRect();
+    const rect = target.getBoundingClientRect();
     const tooltipHeight = 400;
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
@@ -140,7 +144,7 @@ export function ChatPanel({
                                           spaceAbove >= tooltipHeight ? 'above' :
                                           spaceBelow >= spaceAbove ? 'below' : 'above';
 
-    citationShowTimeoutRef.current = window.setTimeout(() => {
+    const openTooltip = () => {
       setOpenCitation({
         source,
         position: {
@@ -150,7 +154,22 @@ export function ChatPanel({
         placement,
       });
       citationShowTimeoutRef.current = null;
-    }, 150);
+    };
+
+    if (withDelay) {
+      citationShowTimeoutRef.current = window.setTimeout(openTooltip, 150);
+      return;
+    }
+
+    openTooltip();
+  };
+
+  const handleCitationHover = (target: HTMLElement, source: MessageSource) => {
+    showCitationTooltip(target, source, true);
+  };
+
+  const handleCitationFocus = (target: HTMLElement, source: MessageSource) => {
+    showCitationTooltip(target, source);
   };
 
   const handleCitationLeave = () => {
@@ -254,21 +273,25 @@ export function ChatPanel({
         if (part.type === 'citation' && part.source) {
           flushTextGroup();
           elements.push(
-            <span
+            <button
               key={`citation-${partIdx}`}
-              onMouseEnter={(e) => handleCitationHover(e, part.source!)}
+              type="button"
+              onMouseEnter={(e) => handleCitationHover(e.currentTarget, part.source!)}
+              onFocus={(e) => handleCitationFocus(e.currentTarget, part.source!)}
               onMouseLeave={handleCitationLeave}
-              className="inline-flex items-center justify-center px-1.5 py-0.5 mx-0.5 text-[11px] font-medium text-blue-700 bg-blue-100 rounded border border-blue-200 hover:bg-blue-200 transition-all duration-200 cursor-pointer"
+              onBlur={handleCitationLeave}
+              className="inline-flex items-center justify-center px-1.5 py-0.5 mx-0.5 text-[11px] font-medium text-blue-700 bg-blue-100 rounded border border-blue-200 hover:bg-blue-200 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               style={{
                 display: 'inline-flex',
                 verticalAlign: 'baseline',
                 minWidth: '20px',
                 height: '18px'
               }}
-              title={`Hover to view source: ${part.source.sourceName}`}
+              title={`View source: ${part.source.sourceName}`}
+              aria-label={`View citation ${part.citationNumber} from ${part.source.sourceName}`}
             >
               {part.citationNumber}
-            </span>
+            </button>
           );
         } else {
           currentTextGroup.push(part.content);
@@ -327,17 +350,29 @@ export function ChatPanel({
                         {renderMessageContent(msg)}
                       </div>
                       <div className="flex items-center gap-2">
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+                        <button
+                          type="button"
+                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                          aria-label="Copy message"
+                        >
                           <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                           </svg>
                         </button>
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+                        <button
+                          type="button"
+                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                          aria-label="Mark message helpful"
+                        >
                           <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
                           </svg>
                         </button>
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+                        <button
+                          type="button"
+                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                          aria-label="Mark message unhelpful"
+                        >
                           <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
                           </svg>
@@ -389,13 +424,14 @@ export function ChatPanel({
               }}
               placeholder="Start typing..."
               disabled={!conversationId}
-              className="flex-1 bg-transparent px-3 py-2 text-gray-900 placeholder-gray-500 resize-none focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 bg-transparent px-3 py-2 text-gray-900 placeholder-gray-500 resize-none disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded-xl"
               rows={1}
             />
             <button
               onClick={onSendMessage}
               disabled={!message.trim() || !conversationId}
-              className="p-2 bg-gray-900 text-white rounded-full flex align-middle align-self-center items-center justify-center hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              className="p-2 bg-gray-900 text-white rounded-full flex align-middle align-self-center items-center justify-center hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label="Send message"
             >
               <ArrowRight className="w-5 h-5" />
             </button>

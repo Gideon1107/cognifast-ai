@@ -48,7 +48,7 @@ export function HeroSection({
       </p>
       <button
         onClick={ctaAction}
-        className="inline-flex items-center gap-2 bg-gray-900 text-white px-8 py-4 rounded-lg text-lg font-medium hover:bg-gray-800 transition-colors cursor-pointer"
+        className="inline-flex items-center gap-2 bg-gray-900 text-white px-8 py-4 rounded-lg text-lg font-medium hover:bg-gray-800 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
       >
         {ctaText}
         <ArrowRight className="w-5 h-5" />
@@ -56,4 +56,3 @@ export function HeroSection({
     </div>
   );
 }
-

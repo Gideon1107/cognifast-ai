@@ -20,7 +20,7 @@ export function Landing() {
       <Navbar />
 
       {/* Main Content */}
-      <main className="px-8">
+      <main id="main-content" tabIndex={-1} className="px-8">
         {/* Hero Section */}
         <HeroSection
           title="Learn Faster"
@@ -149,4 +149,3 @@ export function Landing() {
     </div>
   );
 }
-

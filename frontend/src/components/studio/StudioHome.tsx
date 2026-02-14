@@ -146,7 +146,7 @@ export function StudioHome({
               disabled={isDisabled}
               className={`flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer relative ${
                 isDisabled ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+              } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
             >
               <Icon className="w-6 h-6 text-gray-700 mb-2" />
               <span className="text-xs font-medium text-gray-900 text-center">{option.name}</span>
@@ -182,7 +182,7 @@ export function StudioHome({
               key={quiz.id}
               onClick={() => handleQuizClick(quiz)}
               disabled={isStarting || isGenerating}
-              className="w-full flex items-center gap-3 py-3 px-3 rounded-xl hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group"
+              className="w-full flex items-center gap-3 py-3 px-3 rounded-xl hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             >
               <ClipboardList className="w-6 h-6 text-blue-400 shrink-0" />
               <div className="flex-1 min-w-0 text-left">
