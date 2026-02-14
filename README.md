@@ -346,7 +346,7 @@ Connection uses `DATABASE_URL` with Drizzle ORM and a raw `pg` Pool for vector s
 
 ## Contributing
 
-Contributions are welcome. Here's the short version:
+Contributions are welcome. See **[CONTRIBUTING.md](CONTRIBUTING.md)** for full guidelines. Short version:
 
 1. **Fork** the repo and **clone** your fork.
 2. Create a branch: `git checkout -b feature/your-feature`.

@@ -7,11 +7,9 @@ import { ChatOpenAI } from "@langchain/openai";
 import { QuizGenerationState, Question, QuestionType } from "../../types/quiz.types";
 import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '../../utils/logger';
+import { OVER_GENERATE_COUNT } from './quiz.constants';
 
 const logger = createLogger('QUESTION-GENERATOR');
-
-/** Over-generate so after validation we still have at least numQuestions */
-const OVER_GENERATE_COUNT = 3;
 
 export class QuestionGeneratorAgent {
     private llm: ChatOpenAI;
