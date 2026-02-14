@@ -2,7 +2,7 @@
  * Studio Quiz App - Quiz taking UI inside the Studio panel
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Trophy, RotateCcw, Maximize2, MessageSquareDot } from 'lucide-react';
 import { useQuizStore } from '../../store/useQuizStore';
 import { useChatStore } from '../../store';
@@ -36,17 +36,60 @@ export function StudioQuizApp({
 
   const { addMessage } = useChatStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isQuizExpanded, setIsQuizExpanded] = useState(false);
+
+  const toggleQuizPanel = () => {
+    setIsQuizExpanded((prev) => !prev);
+  };
+
+  const closeExpandedQuiz = () => {
+    setIsQuizExpanded(false);
+  };
+
+  useEffect(() => {
+    if (!isQuizExpanded) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsQuizExpanded(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isQuizExpanded]);
 
   // Summary view
+  const containerClasses = isQuizExpanded
+    ? 'fixed inset-4 z-50 bg-white rounded-xl border border-gray-200 shadow-2xl flex flex-col'
+    : 'flex flex-col h-full';
+
   if (quizStep === 'summary' && summary) {
     return (
-      <QuizSummaryView 
-        summary={summary} 
-        conversationTitle={conversationTitle}
-        sourceCount={sourceCount}
-        onRetake={() => goToHome()} 
-        onDone={() => goToHome()} 
-      />
+      <>
+        {isQuizExpanded && (
+          <button
+            type="button"
+            className="fixed inset-0 z-40 bg-black/30"
+            onClick={closeExpandedQuiz}
+            aria-label="Close expanded quiz panel backdrop"
+            tabIndex={-1}
+          />
+        )}
+        <div className={containerClasses}>
+          <QuizSummaryView
+            summary={summary}
+            conversationTitle={conversationTitle}
+            sourceCount={sourceCount}
+            onRetake={() => goToHome()}
+            onDone={() => goToHome()}
+            isQuizExpanded={isQuizExpanded}
+            onToggleExpand={toggleQuizPanel}
+          />
+        </div>
+      </>
     );
   }
 
@@ -57,7 +100,22 @@ export function StudioQuizApp({
   const hasAnswered = !!answer;
 
   if (!question) {
-    return <div className="p-6 text-center text-gray-500 text-sm">No question available</div>;
+    return (
+      <>
+        {isQuizExpanded && (
+          <button
+            type="button"
+            className="fixed inset-0 z-40 bg-black/30"
+            onClick={closeExpandedQuiz}
+            aria-label="Close expanded quiz panel backdrop"
+            tabIndex={-1}
+          />
+        )}
+        <div className={containerClasses}>
+          <div className="p-6 text-center text-gray-500 text-sm">No question available</div>
+        </div>
+      </>
+    );
   }
 
   const handleOptionClick = async (optionIndex: number) => {
@@ -131,108 +189,122 @@ Help me understand why my answer was incorrect.`;
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Quiz Header */}
-      <div className="p-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 sansation-regular">
-              {conversationTitle ? `${conversationTitle} Quiz` : 'Quiz'}
-            </h2>
-            <p className="text-sm text-gray-500">
-              Based on {sourceCount} source{sourceCount !== 1 ? 's' : ''}
-            </p>
-          </div>
-          <button
-            className="p-1.5 hover:bg-gray-100 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-            aria-label="Expand quiz panel"
-            type="button"
-          >
-            <Maximize2 className="w-4 h-4 text-gray-400" />
-          </button>
-        </div>
-      </div>
-
-      {/* Question Content */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {/* Progress */}
-        <p className="text-sm text-gray-500 mb-4">
-          {currentIndex + 1} / {questions.length}
-        </p>
-
-        {/* Question */}
-        <div className="text-gray-900 text-base leading-relaxed mb-6">
-          {renderText(question.question)}
-        </div>
-
-        {/* Options */}
-        <div className="space-y-3">
-          {question.options.map((option, index) => {
-            const isSelected = hasAnswered && answer.selectedIndex === index;
-            const isCorrectOption = hasAnswered && answer.correctIndex === index;
-
-            return (
-              <button
-                key={index}
-                onClick={() => handleOptionClick(index)}
-                disabled={hasAnswered || isSubmitting}
-                className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${getOptionStyles(index)} ${
-                  !hasAnswered && !isSubmitting ? 'cursor-pointer' : 'cursor-default'
-                } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
-              >
-                <span className="shrink-0 text-gray-500 font-medium">
-                  {String.fromCharCode(65 + index)}.
-                </span>
-                <span className="flex-1 text-gray-900">{renderText(option)}</span>
-                {hasAnswered && (
-                  <span className="shrink-0">
-                    {isSelected && answer.correct && (
-                      <CheckCircle className="w-5 h-5 text-green-500" />
-                    )}
-                    {isSelected && !answer.correct && (
-                      <XCircle className="w-5 h-5 text-red-500" />
-                    )}
-                    {!isSelected && isCorrectOption && (
-                      <CheckCircle className="w-5 h-5 text-green-500" />
-                    )}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Actions */}
-        {hasAnswered && (
-          <div className="flex items-center justify-between mt-6">
-            {!answer.correct ? (
-              <button
-                onClick={handleExplain}
-                className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-full border border-blue-200 text-sm font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              >
-                <MessageSquareDot className="w-4 h-4" />
-                Explain
-              </button>
-            ) : (
-              <div />
-            )}
+    <>
+      {isQuizExpanded && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-black/30"
+          onClick={closeExpandedQuiz}
+          aria-label="Close expanded quiz panel backdrop"
+          tabIndex={-1}
+        />
+      )}
+      <div className={containerClasses}>
+        {/* Quiz Header */}
+        <div className="p-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 sansation-regular">
+                {conversationTitle ? `${conversationTitle} Quiz` : 'Quiz'}
+              </h2>
+              <p className="text-sm text-gray-500">
+                Based on {sourceCount} source{sourceCount !== 1 ? 's' : ''}
+              </p>
+            </div>
             <button
-              onClick={nextQuestion}
-              className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-full hover:bg-blue-700 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              onClick={toggleQuizPanel}
+              className="p-1.5 hover:bg-gray-100 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={isQuizExpanded ? 'Exit expanded quiz panel' : 'Expand quiz panel'}
+              aria-pressed={isQuizExpanded}
+              title={isQuizExpanded ? 'Exit expanded quiz panel' : 'Expand quiz panel'}
+              type="button"
             >
-              {isLastQuestion ? 'Done' : 'Next'}
+              <Maximize2 className="w-4 h-4 text-gray-400" />
             </button>
           </div>
-        )}
+        </div>
 
-        {/* Loading state */}
-        {isSubmitting && (
-          <div className="flex items-center justify-center py-4">
-            <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent" />
+        {/* Question Content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {/* Progress */}
+          <p className="text-sm text-gray-500 mb-4">
+            {currentIndex + 1} / {questions.length}
+          </p>
+
+          {/* Question */}
+          <div className="text-gray-900 text-base leading-relaxed mb-6">
+            {renderText(question.question)}
           </div>
-        )}
+
+          {/* Options */}
+          <div className="space-y-3">
+            {question.options.map((option, index) => {
+              const isSelected = hasAnswered && answer.selectedIndex === index;
+              const isCorrectOption = hasAnswered && answer.correctIndex === index;
+
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleOptionClick(index)}
+                  disabled={hasAnswered || isSubmitting}
+                  className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${getOptionStyles(index)} ${
+                    !hasAnswered && !isSubmitting ? 'cursor-pointer' : 'cursor-default'
+                  } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
+                >
+                  <span className="shrink-0 text-gray-500 font-medium">
+                    {String.fromCharCode(65 + index)}.
+                  </span>
+                  <span className="flex-1 text-gray-900">{renderText(option)}</span>
+                  {hasAnswered && (
+                    <span className="shrink-0">
+                      {isSelected && answer.correct && (
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                      )}
+                      {isSelected && !answer.correct && (
+                        <XCircle className="w-5 h-5 text-red-500" />
+                      )}
+                      {!isSelected && isCorrectOption && (
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                      )}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Actions */}
+          {hasAnswered && (
+            <div className="flex items-center justify-between mt-6">
+              {!answer.correct ? (
+                <button
+                  onClick={handleExplain}
+                  className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-full border border-blue-200 text-sm font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                >
+                  <MessageSquareDot className="w-4 h-4" />
+                  Explain
+                </button>
+              ) : (
+                <div />
+              )}
+              <button
+                onClick={nextQuestion}
+                className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-full hover:bg-blue-700 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              >
+                {isLastQuestion ? 'Done' : 'Next'}
+              </button>
+            </div>
+          )}
+
+          {/* Loading state */}
+          {isSubmitting && (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent" />
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -243,12 +315,16 @@ function QuizSummaryView({
   sourceCount,
   onRetake,
   onDone,
+  isQuizExpanded,
+  onToggleExpand,
 }: {
   summary: { score: number; correctCount: number; wrongCount: number; total: number };
   conversationTitle: string;
   sourceCount: number;
   onRetake: () => void;
   onDone: () => void;
+  isQuizExpanded: boolean;
+  onToggleExpand: () => void;
 }) {
   const getMessage = () => {
     if (summary.score >= 90) return { text: 'Excellent!', color: 'text-green-600' };
@@ -263,12 +339,26 @@ function QuizSummaryView({
     <div className="flex flex-col h-full">
       {/* Quiz Header */}
       <div className="p-4">
-        <h2 className="text-lg font-semibold text-gray-900">
-          {conversationTitle ? `${conversationTitle} Quiz` : 'Quiz'}
-        </h2>
-        <p className="text-sm text-gray-500">
-          Based on {sourceCount} source{sourceCount !== 1 ? 's' : ''}
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {conversationTitle ? `${conversationTitle} Quiz` : 'Quiz'}
+            </h2>
+            <p className="text-sm text-gray-500">
+              Based on {sourceCount} source{sourceCount !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <button
+            onClick={onToggleExpand}
+            className="p-1.5 hover:bg-gray-100 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            aria-label={isQuizExpanded ? 'Exit expanded quiz panel' : 'Expand quiz panel'}
+            aria-pressed={isQuizExpanded}
+            title={isQuizExpanded ? 'Exit expanded quiz panel' : 'Expand quiz panel'}
+            type="button"
+          >
+            <Maximize2 className="w-4 h-4 text-gray-400" />
+          </button>
+        </div>
       </div>
 
       {/* Summary Content */}

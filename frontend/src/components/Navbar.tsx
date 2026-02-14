@@ -10,6 +10,11 @@ export function Navbar() {
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
+  const getStartedBaseClasses =
+    'bg-gray-900 px-8 py-4 rounded-lg text-lg font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2';
+  const getStartedModifierClasses = isActive('/dashboard')
+    ? 'text-blue-600'
+    : 'text-white hover:text-gray-200';
 
   return (
     <header className="relative bg-white border-b border-gray-200">
@@ -32,9 +37,7 @@ export function Navbar() {
           <nav className="flex items-center gap-6">
             <button
               onClick={() => navigate('/dashboard')}
-              className={`font-medium ${
-                isActive('/dashboard') ? 'text-blue-600' : 'text-white hover:text-gray-200 cursor-pointer bg-gray-900 px-8 py-4 rounded-lg text-lg font-medium transition-colors'
-              } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
+              className={`${getStartedBaseClasses} ${getStartedModifierClasses}`}
             >
               Get Started
             </button>
