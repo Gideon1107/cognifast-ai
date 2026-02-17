@@ -173,7 +173,7 @@ export function Dashboard() {
       <Navbar />
 
       {/* Main Content */}
-      <main className="px-8 py-8 max-w-7xl mx-auto">
+      <main id="main-content" tabIndex={-1} className="px-8 py-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-900 sansation-regular">My Classrooms</h1>
@@ -402,7 +402,7 @@ export function Dashboard() {
                   onChange={(e) => setEditTitle(e.target.value)}
                   placeholder="Enter conversation name"
                   disabled={isUpdating}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:border-blue-500"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !isUpdating && editTitle.trim()) {
                       handleSaveEdit();
@@ -452,4 +452,3 @@ export function Dashboard() {
     </div>
   );
 }
-

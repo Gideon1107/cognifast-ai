@@ -70,7 +70,7 @@ export function StudioPanel({
                   onQuizClose?.();
                   goToHome();
                 }}
-                className="hover:text-gray-900 transition-colors cursor-pointer"
+                className="hover:text-gray-900 transition-colors cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               >
                 Studio
               </button>
@@ -82,7 +82,7 @@ export function StudioPanel({
           )}
         </div>
         <button
-          className="p-1.5 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+          className="p-1.5 hover:bg-gray-100 rounded-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           aria-label="Collapse studio panel"
           title="Collapse Studio"
         >

@@ -20,7 +20,7 @@ export function SourcesPanel({ sources }: SourcesPanelProps) {
       <div className="p-4 border-b border-gray-200 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-600 sansation-regular">Sources</h2>
         <button
-          className="p-1.5 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+          className="p-1.5 hover:bg-gray-100 rounded-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           aria-label="Collapse sources panel"
           title="Collapse Sources"
         >
