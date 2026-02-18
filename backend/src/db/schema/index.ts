@@ -5,4 +5,3 @@ export { conversations, conversationSources } from './conversations';
 export { messages } from './messages';
 export { quizzes } from './quizzes';
 export { quizAttempts } from './quiz-attempts';
-export { sourceSummaries } from './source-summaries';
