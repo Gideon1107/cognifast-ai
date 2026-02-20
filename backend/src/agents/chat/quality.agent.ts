@@ -10,7 +10,7 @@ const logger = createLogger('QUALITY-AGENT');
 
 export class QualityAgent {
     private llm: ChatOpenAI;
-    private maxRetries: number = 2; // Max regeneration attempts
+    private maxRetries: number = 2; 
 
     constructor() {
         this.llm = new ChatOpenAI({
@@ -78,6 +78,7 @@ Otherwise return "good".
 
 Evaluation:`;
 
+
             const llmStartTime = Date.now();
             const response = await this.llm.invoke(prompt);
             const llmEndTime = Date.now();
@@ -122,7 +123,6 @@ Evaluation:`;
 
         } catch (error: any) {
             logger.error(`Error: ${error.message}`);
-            // Accept response on evaluation error
             return {
                 responseQuality: 'good',
                 metadata: {

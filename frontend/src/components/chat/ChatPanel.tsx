@@ -424,7 +424,7 @@ export function ChatPanel({
               }}
               placeholder="Start typing..."
               disabled={!conversationId}
-              className="flex-1 bg-transparent px-3 py-2 text-gray-900 placeholder-gray-500 resize-none disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded-xl"
+              className="flex-1 bg-transparent px-3 py-2 text-gray-900 placeholder-gray-500 resize-none disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none rounded-xl"
               rows={1}
             />
             <button
