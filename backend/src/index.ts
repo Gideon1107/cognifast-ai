@@ -40,6 +40,23 @@ app.get('/', (req, res) => {
     res.send('Cognifast AI API');
 });
 
+app.get('/api/health', async (req, res) => {
+    const healthStatus = await checkDatabaseConnection();
+
+    if (healthStatus) {
+        res.status(200).json({
+            status: "ok",
+            database: "connected"
+        })
+    }
+    else {
+        res.status(500).json({
+            status: "unhealthy",
+            database: "disconnected"
+        })
+    }
+})
+
 // Serve uploaded files (must be before /api/sources so /api/sources/files/* is handled here)
 app.use('/api/sources/files', express.static(UPLOADS_DIR));
 
