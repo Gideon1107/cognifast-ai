@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+
+.claude
+
+.cursorrules    
+
+.cursor
+
+.DS_Store

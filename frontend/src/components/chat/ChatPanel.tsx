@@ -3,7 +3,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { FileText, ArrowRight } from 'lucide-react';
+import { FileText, ArrowRight, User, Bot } from 'lucide-react';
 import { CitationTooltip } from './CitationTooltip';
 import { renderWithLatex } from '../../utils/latex';
 import type { Message, MessageSource } from '@shared/types';
@@ -17,7 +17,6 @@ interface ChatPanelProps {
   setMessage: (message: string) => void;
   onSendMessage: () => void;
   isLoading: boolean;
-  loadingMessage: string;
 }
 
 interface CitationState {
@@ -35,7 +34,6 @@ export function ChatPanel({
   setMessage,
   onSendMessage,
   isLoading,
-  loadingMessage,
 }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const citationTimeoutRef = useRef<number | null>(null);
@@ -45,16 +43,22 @@ export function ChatPanel({
   const [openCitation, setOpenCitation] = useState<CitationState | null>(null);
 
   // Scroll to bottom function
-  const scrollToBottom = () => {
+  const scrollToBottom = (smooth = false) => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      messagesEndRef.current.scrollIntoView({ behavior: smooth ? 'smooth' : 'instant', block: 'end' });
     }
   };
 
-  // Scroll to bottom when messages change or loading state changes
+  // Smooth scroll when a new message is added or conversation opens
   useEffect(() => {
-    scrollToBottom();
+    scrollToBottom(true);
   }, [messages.length, isLoading]);
+
+  // Instant scroll while the last message streams in
+  useEffect(() => {
+    if (messages.length === 0) return;
+    scrollToBottom(false);
+  }, [messages[messages.length - 1]?.content]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -329,22 +333,29 @@ export function ChatPanel({
         ) : (
           <>
             {messages.map((msg) => (
-              <div key={msg.id || `msg-${msg.createdAt}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`} style={{ minWidth: 0, maxWidth: '100%' }}>
-                <div
-                  className={msg.role === 'user' ? 'w-fit min-w-0 shrink-0 grow-0' : 'max-w-3xl w-full'}
-                  style={{
-                    minWidth: 0,
-                    overflow: 'hidden',
-                    ...(msg.role === 'user'
-                      ? { maxWidth: 'min(48rem, 85%)' }
-                      : { maxWidth: '100%' }),
-                  }}
-                >
-                  {msg.role === 'user' ? (
+              msg.role === 'user' ? (
+                <div key={msg.id || `msg-${msg.createdAt}`} className="flex justify-end items-start gap-3" style={{ minWidth: 0, maxWidth: '100%' }}>
+                  <div
+                    className="w-fit min-w-0 shrink-0 grow-0"
+                    style={{ minWidth: 0, overflow: 'hidden', maxWidth: 'min(48rem, 85%)' }}
+                  >
                     <div className="bg-gray-900 text-white px-4 py-3 rounded-tl-2xl rounded-tr-2xl rounded-bl-2xl inline-block max-w-full">
                       <p className="text-sm whitespace-pre-wrap wrap-break-word">{msg.content}</p>
                     </div>
-                  ) : (
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center shrink-0 mt-1">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                </div>
+              ) : (
+                <div key={msg.id || `msg-${msg.createdAt}`} className="flex justify-start items-start gap-3" style={{ minWidth: 0, maxWidth: '100%' }}>
+                  <div className="w-8 h-8 rounded-full bg-gray-900/10 flex items-center justify-center shrink-0 mt-1">
+                    <Bot className="w-4 h-4 text-gray-900" />
+                  </div>
+                  <div
+                    className="max-w-3xl w-full"
+                    style={{ minWidth: 0, overflow: 'hidden', maxWidth: '100%' }}
+                  >
                     <div className="space-y-3" style={{ maxWidth: '100%', overflow: 'hidden', minWidth: 0 }}>
                       <div className="prose prose-sm max-w-none text-gray-900 leading-relaxed whitespace-pre-wrap" style={{ maxWidth: '100%', overflowWrap: 'break-word', overflow: 'hidden', minWidth: 0 }}>
                         {renderMessageContent(msg)}
@@ -379,27 +390,31 @@ export function ChatPanel({
                         </button>
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )
             ))}
 
             {/* Loading indicator */}
             {isLoading && (
-              <div className="flex justify-start">
+              <div className="flex justify-start items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-blue-600/10 flex items-center justify-center shrink-0 mt-1">
+                  <Bot className="w-4 h-4 text-blue-600" />
+                </div>
                 <div className="max-w-3xl w-full">
-                  <div className="flex items-center gap-3 bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 px-5 py-4 rounded-2xl border border-blue-100/50 shadow-sm">
-                    <div className="relative shrink-0 h-5 w-5">
-                      <div
-                        className="absolute inset-0 rounded-full animate-spin"
-                        style={{
-                          background: 'conic-gradient(from 0deg, transparent, #3b82f6, #6366f1, #8b5cf6, #3b82f6, transparent)',
-                          mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 3px))',
-                          WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 3px))'
-                        }}
-                      ></div>
-                    </div>
-                    <p className="text-sm font-medium text-gray-700 italic">{loadingMessage}</p>
+                  <div className="flex items-center gap-1 px-5 py-4">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full animate-bounce"
+                      style={{ animationDelay: '0ms', background: '#10b981' }}
+                    />
+                    <span
+                      className="w-1.5 h-1.5 rounded-full animate-bounce"
+                      style={{ animationDelay: '150ms', background: '#3b82f6' }}
+                    />
+                    <span
+                      className="w-1.5 h-1.5 rounded-full animate-bounce"
+                      style={{ animationDelay: '300ms', background: '#6366f1' }}
+                    />
                   </div>
                 </div>
               </div>
@@ -422,9 +437,9 @@ export function ChatPanel({
                   onSendMessage();
                 }
               }}
-              placeholder="Start typing..."
+              placeholder="Ask a question about your uploaded sources..."
               disabled={!conversationId}
-              className="flex-1 bg-transparent px-3 py-2 text-gray-900 placeholder-gray-500 resize-none disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none rounded-xl"
+              className="flex-1 bg-transparent px-3 py-2 text-gray-900 placeholder-gray-400 placeholder:italic placeholder:text-sm resize-none disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none rounded-xl"
               rows={1}
             />
             <button

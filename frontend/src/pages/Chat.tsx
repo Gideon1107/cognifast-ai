@@ -139,7 +139,6 @@ export function Chat() {
     setCurrentConversation,
     removeMessage,
     isLoading,
-    getLoadingMessage,
   } = useChatStore();
 
   // WebSocket hook for real-time messaging
@@ -179,7 +178,6 @@ export function Chat() {
   const conversation = conversationId ? getStoreConversation(conversationId) : null;
   const messages = conversationId ? getMessages(conversationId) : [];
   const isLoadingState = conversationId ? isLoading(conversationId) : false;
-  const loadingMessage = conversationId ? (getLoadingMessage(conversationId) || 'Processing...') : '';
 
   const handleStartClassroom = async (sourceIds: string[], title: string) => {
     if (sourceIds.length === 0) return;
@@ -295,7 +293,6 @@ export function Chat() {
             setMessage={setMessage}
             onSendMessage={handleSendMessage}
             isLoading={isLoadingState}
-            loadingMessage={loadingMessage}
           />
         </div>
 
