@@ -1,8 +1,9 @@
 <div align="center">
 
+<img width="150" height="150" alt="cognifast_logo" src="https://github.com/user-attachments/assets/05380a0d-5b9f-4741-a672-302049898f56" /><br>
 # Cognifast AI
 
-**AI-powered learning platform — upload sources, chat with your documents, take quizzes, and get answers with citations.**
+**An AI-Powered Adaptive Learning Platform for Faster Learning and Knowledge Evaluation — upload sources, chat with your documents, take quizzes, and get answers with citations.**
  
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
