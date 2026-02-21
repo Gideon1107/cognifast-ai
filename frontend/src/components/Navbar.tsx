@@ -3,18 +3,11 @@
  * Main navigation bar used across all pages
  */
 
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import cognifastLogo from '../assets/cognifast_logo.png';
 
 export function Navbar() {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const isActive = (path: string) => location.pathname === path;
-  const getStartedBaseClasses =
-    'bg-gray-900 px-8 py-4 rounded-lg text-lg font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2';
-  const getStartedModifierClasses = isActive('/dashboard')
-    ? 'text-blue-600'
-    : 'text-white hover:text-gray-200';
 
   return (
     <header className="relative bg-white border-b border-gray-200">
@@ -24,20 +17,20 @@ export function Navbar() {
       >
         Skip to main content
       </a>
-      <div className="px-8 py-4">
+      <div className="px-8 pt-4 pb-2">
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate('/')}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded-lg"
           >
-            <div className="w-8 h-8 bg-blue-600 rounded-lg"></div>
-            <span className="text-xl font-semibold text-gray-900 cursor-pointer sansation-regular">Cognifast</span>
+            <img src={cognifastLogo} alt="Cognifast logo" className="w-14 h-14 object-contain" />
+            <span className="text-xl font-semibold text-gray-900 cursor-pointer sansation-regular -ml-2">Cogni<span className="text-blue-800 text-italic">fast</span></span>
           </button>
           
           <nav className="flex items-center gap-6">
             <button
               onClick={() => navigate('/dashboard')}
-              className={`${getStartedBaseClasses} ${getStartedModifierClasses}`}
+              className="bg-gray-900 px-8 py-4 rounded-lg text-lg font-medium text-white hover:text-gray-200 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             >
               Get Started
             </button>

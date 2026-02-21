@@ -27,7 +27,7 @@ export function useWebSocket({ conversationId, enabled = true }: UseWebSocketOpt
         appendStreamingContent,
         clearStreaming,
         finalizeStreamingMessage,
-        setLoadingState,
+        setLoading,
         clearLoadingState,
     } = useChatStore();
 
@@ -83,37 +83,21 @@ export function useWebSocket({ conversationId, enabled = true }: UseWebSocketOpt
         // Handle message start
         socket.on('message_start', (data: { conversationId: string }) => {
             logger.info(`Message streaming started for conversation ${data.conversationId}`);
-            // Initialize streaming content and show initial loading
+            // Initialize streaming content and show loading dots
             setStreamingContent(data.conversationId, '', null);
-            setLoadingState(data.conversationId, 'initial', 'Looking for cues...');
-            logger.info(`[USE-WEBSOCKET] Set initial loading state for ${data.conversationId}`);
-        });
-
-        // Handle loading stage updates
-        socket.on('loading_stage', (data: { conversationId: string; stage: string; message: string }) => {
-            const { conversationId: convId, stage, message } = data;
-            logger.info(`[USE-WEBSOCKET] Loading stage update for conversation ${convId}: ${stage} - ${message}`);
-            
-            if (message && message.trim().length > 0) {
-                setLoadingState(convId, stage, message);
-                logger.info(`[USE-WEBSOCKET] Set loading state: ${message}`);
-            } else {
-                // Clear loading when message is empty (streaming started)
-                clearLoadingState(convId);
-                logger.info(`[USE-WEBSOCKET] Cleared loading state for ${convId}`);
-            }
+            setLoading(data.conversationId, true);
         });
 
         // Handle message tokens (streaming)
         socket.on('message_token', (data: { conversationId: string; messageId: string; token: string }) => {
             const { conversationId: convId, token } = data;
             logger.debug(`Received token for conversation ${convId}`);
-            
+
             // Clear loading when we start receiving actual content
             if (token && token.trim().length > 0) {
-                clearLoadingState(convId);
+                setLoading(convId, false);
             }
-            
+
             // Append token to streaming content
             appendStreamingContent(convId, token);
         });
@@ -148,7 +132,6 @@ export function useWebSocket({ conversationId, enabled = true }: UseWebSocketOpt
             socket.off('disconnect');
             socket.off('joined_conversation');
             socket.off('message_start');
-            socket.off('loading_stage');
             socket.off('message_token');
             socket.off('message_end');
             socket.off('error');
@@ -159,7 +142,7 @@ export function useWebSocket({ conversationId, enabled = true }: UseWebSocketOpt
         clearLoadingState,
         clearStreaming,
         finalizeStreamingMessage,
-        setLoadingState,
+        setLoading,
         setStreamingContent,]);
 
     return {

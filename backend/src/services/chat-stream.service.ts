@@ -70,8 +70,6 @@ export async function streamChatGraphWithWebSocket(
         const streamingMessageId = uuidv4();
         let lastStreamedContent = '';
         let finalAssistantMessage: Message | null = null;
-        let lastNodeName = '';
-        let generatorNodeStarted = false;
 
         // Create token callback for generator agent
         const onToken = (token: string) => {
@@ -94,60 +92,18 @@ export async function streamChatGraphWithWebSocket(
 
         // Stream graph execution
         for await (const stateUpdate of streamChatGraph(streamingInitialState)) {
-            // Get current node from state (added by graph stream)
-            const currentNode = (stateUpdate as any)._currentNode || '';
-            
-            // Emit loading stage if node changed
-            if (currentNode && currentNode !== lastNodeName) {
-                lastNodeName = currentNode;
-                
-                let loadingMessage = '';
-                switch (currentNode) {
-                    case 'router':
-                        loadingMessage = 'Looking for cues...';
-                        break;
-                    case 'retrieval':
-                        loadingMessage = 'Reviewing sources...';
-                        break;
-                    case 'generator':
-                        loadingMessage = 'Generating response...';
-                        generatorNodeStarted = true;
-                        break;
-                    case 'quality':
-                        // Quality check happens quickly, skip loading message
-                        break;
-                }
-
-                if (loadingMessage) {
-                    socket.emit('loading_stage', {
-                        conversationId,
-                        stage: currentNode,
-                        message: loadingMessage
-                    });
-                }
-            }
-
             // Check if we have messages in the state update
             if (stateUpdate.messages && Array.isArray(stateUpdate.messages) && stateUpdate.messages.length > 0) {
                 const lastMessage = stateUpdate.messages[stateUpdate.messages.length - 1];
-                
+
                 // Look for assistant message
                 if (lastMessage && lastMessage.role === 'assistant') {
                     const currentContent = lastMessage.content || '';
-                    
-                    // Clear loading when we start receiving content (first token arrives)
-                    if (currentContent.length > 0 && lastStreamedContent.length === 0 && generatorNodeStarted) {
-                        socket.emit('loading_stage', {
-                            conversationId,
-                            stage: 'streaming',
-                            message: ''
-                        });
-                    }
-                    
+
                     // Note: Tokens are now emitted directly from generator agent via onToken callback
                     // We still track content for final message
                     lastStreamedContent = currentContent;
-                    
+
                     // Keep track of final message
                     finalAssistantMessage = lastMessage;
                 }

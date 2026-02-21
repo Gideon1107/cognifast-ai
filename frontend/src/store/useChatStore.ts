@@ -13,7 +13,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   messages: new Map(),
   currentConversationId: null,
   streamingContent: new Map(),
-  loadingState: new Map(),
+  loadingState: new Set(),
 
   // ============================================
   // Conversation Actions
@@ -208,11 +208,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   /**
    * Set loading state for a conversation
    */
-  setLoadingState: (conversationId: string, stage: string, message: string) => {
+  setLoading: (conversationId: string, value: boolean) => {
     set((state) => {
-      const newLoading = new Map(state.loadingState);
-      if (message) {
-        newLoading.set(conversationId, { stage, message });
+      const newLoading = new Set(state.loadingState);
+      if (value) {
+        newLoading.add(conversationId);
       } else {
         newLoading.delete(conversationId);
       }
@@ -225,7 +225,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
    */
   clearLoadingState: (conversationId: string) => {
     set((state) => {
-      const newLoading = new Map(state.loadingState);
+      const newLoading = new Set(state.loadingState);
       newLoading.delete(conversationId);
       return { loadingState: newLoading };
     });
@@ -277,16 +277,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
    * Check if a conversation is currently loading
    */
   isLoading: (conversationId: string) => {
-    const loading = get().loadingState.get(conversationId);
-    return !!loading && loading.message.length > 0;
-  },
-
-  /**
-   * Get loading message for a conversation
-   */
-  getLoadingMessage: (conversationId: string) => {
-    const loading = get().loadingState.get(conversationId);
-    return loading?.message || null;
+    return get().loadingState.has(conversationId);
   },
 }));
 

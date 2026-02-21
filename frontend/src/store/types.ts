@@ -14,14 +14,6 @@ export interface StreamingState {
 }
 
 /**
- * Loading state for a conversation
- */
-export interface LoadingState {
-  stage: string;
-  message: string;
-}
-
-/**
  * Chat Store State Interface
  */
 export interface ChatStore {
@@ -30,7 +22,7 @@ export interface ChatStore {
   messages: Map<string, Message[]>;
   currentConversationId: string | null;
   streamingContent: Map<string, StreamingState>;
-  loadingState: Map<string, LoadingState>;
+  loadingState: Set<string>;
 
   // Actions - Conversations
   setConversation: (conversation: Conversation) => void;
@@ -52,7 +44,7 @@ export interface ChatStore {
   finalizeStreamingMessage: (conversationId: string, message: Message) => void;
 
   // Actions - Loading
-  setLoadingState: (conversationId: string, stage: string, message: string) => void;
+  setLoading: (conversationId: string, value: boolean) => void;
   clearLoadingState: (conversationId: string) => void;
 
   // Helpers
@@ -60,6 +52,5 @@ export interface ChatStore {
   getConversation: (conversationId: string) => Conversation | undefined;
   isStreaming: (conversationId: string) => boolean;
   isLoading: (conversationId: string) => boolean;
-  getLoadingMessage: (conversationId: string) => string | null;
 }
 

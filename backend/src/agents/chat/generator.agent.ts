@@ -272,6 +272,9 @@ Example of BAD formatting:
 "The process uses CO2 from the atmosphere and water (H2O) from the roots." ← BAD: No LaTeX for formulas
 "He worked on several projects. This information is detailed in the document." ← BAD: No specific citations
 
+IMPORTANT:
+IF NO RELEVANT INFORMATION IS FOUND, JUST SAY "I don't see that information in your uploaded sources" or "The sources don't mention that", Do not try to reach into your own knowledge base to answer the question.
+
 Answer:`;
     }
 
