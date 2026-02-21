@@ -1,5 +1,6 @@
 <div align="center">
 
+<img width="500" height="381" alt="cognifast_logo" src="https://github.com/user-attachments/assets/05380a0d-5b9f-4741-a672-302049898f56" />
 # Cognifast AI
 
 **AI-powered learning platform — upload sources, chat with your documents, take quizzes, and get answers with citations.**
