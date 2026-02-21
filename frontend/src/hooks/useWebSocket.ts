@@ -118,6 +118,7 @@ export function useWebSocket({ conversationId, enabled = true }: UseWebSocketOpt
             if (data.conversationId) {
                 // Clear streaming on error
                 clearStreaming(data.conversationId);
+                setLoading(data.conversationId, false);
             }
         });
 

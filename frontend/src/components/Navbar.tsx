@@ -24,7 +24,7 @@ export function Navbar() {
             className="flex items-center gap-2 hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded-lg"
           >
             <img src={cognifastLogo} alt="Cognifast logo" className="w-14 h-14 object-contain" />
-            <span className="text-xl font-semibold text-gray-900 cursor-pointer sansation-regular -ml-2">Cogni<span className="text-blue-800 text-italic">fast</span></span>
+            <span className="text-xl font-semibold text-gray-900 cursor-pointer sansation-regular -ml-2">Cogni<span className="text-blue-800 italic">fast</span></span>
           </button>
           
           <nav className="flex items-center gap-6">
