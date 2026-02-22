@@ -29,6 +29,13 @@
       "when": 1771700000000,
       "tag": "0003_custom_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1771800000000,
+      "tag": "0004_drop_sources_conversation_id",
+      "breakpoints": true
     }
   ]
 }

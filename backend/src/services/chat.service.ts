@@ -423,20 +423,25 @@ export class ChatService {
 
     static async deleteConversation(conversationId: string): Promise<void> {
         try {
-            // 1. Fetch file paths BEFORE deletion (rows gone after cascade)
+            // 1. Fetch source IDs and file paths BEFORE deletion (rows gone after cascade)
             const linkedSources = await db
-                .select({ filePath: sources.filePath, fileType: sources.fileType })
+                .select({ id: sources.id, filePath: sources.filePath, fileType: sources.fileType })
                 .from(conversationSources)
                 .innerJoin(sources, eq(conversationSources.sourceId, sources.id))
                 .where(eq(conversationSources.conversationId, conversationId));
 
             // 2. Delete conversation — DB cascade handles:
-            //    messages, conversation_sources, quizzes, quiz_attempts,
-            //    sources (conversation_id FK), source_chunks
+            //    messages, conversation_sources, quizzes, quiz_attempts
             await db.delete(conversations).where(eq(conversations.id, conversationId));
             logger.info(`Conversation deleted: ${conversationId}`);
 
-            // 3. Delete physical files (non-fatal, skip URL sources)
+            // 3. Delete source rows and their chunks (cascade: source_chunks)
+            if (linkedSources.length > 0) {
+                const sourceIds = linkedSources.map(s => s.id);
+                await db.delete(sources).where(inArray(sources.id, sourceIds));
+            }
+
+            // 4. Delete physical files (non-fatal, skip URL sources)
             const storageService = new StorageService();
             for (const source of linkedSources) {
                 if (source.fileType !== 'url') {
