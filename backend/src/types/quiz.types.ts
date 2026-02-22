@@ -4,6 +4,11 @@
 export type QuestionType = 'multiple_choice' | 'true_false';
 
 /**
+ * Bloom's Taxonomy cognitive level for a question
+ */
+export type BloomLevel = 'recall' | 'understand' | 'apply' | 'analyze';
+
+/**
  * Single quiz question (stored in quizzes.questions JSONB)
  */
 export interface Question {
@@ -13,6 +18,7 @@ export interface Question {
     options: string[]; // For multiple choice or true/false
     correctIndex: number; // 0-based index into options
     concept: string; // Key concept this question tests
+    difficulty?: BloomLevel; // Bloom's Taxonomy cognitive level (optional for backward compat)
 }
 
 /**

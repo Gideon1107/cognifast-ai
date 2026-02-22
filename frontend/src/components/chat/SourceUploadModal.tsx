@@ -242,24 +242,24 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
+      <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-semibold text-gray-900 sansation-regular">Upload Source</h2>
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-zinc-700">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white sansation-regular">Upload Source</h2>
           <button
             onClick={handleClose}
             disabled={uploadStatus === 'uploading'}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             aria-label="Close upload modal"
           >
-            <X className="w-5 h-5 text-gray-600" />
+            <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
         </div>
 
         {/* Content */}
         <div className="p-6">
           {/* Upload Mode Tabs */}
-          <div className="flex gap-2 mb-6 border-b border-gray-200">
+          <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-zinc-700">
             <button
               onClick={() => {
                 setUploadMode('file');
@@ -269,7 +269,7 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
               className={`px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
                 uploadMode === 'file'
                   ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
               }`}
             >
               <div className="flex items-center gap-2">
@@ -286,7 +286,7 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
               className={`px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
                 uploadMode === 'url'
                   ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
               }`}
             >
               <div className="flex items-center gap-2">
@@ -299,14 +299,14 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
           {/* Uploaded Sources List */}
           {uploadedSources.length > 0 && (
             <div className="mb-6">
-              <h3 className="text-sm font-medium text-gray-900 mb-3">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
                 Uploaded Sources ({uploadedSources.length})
               </h3>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {uploadedSources.map((source) => (
                   <div
                     key={source.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-800 rounded-lg border border-gray-200 dark:border-zinc-700"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       {source.fileType === 'url' ? (
@@ -315,15 +315,15 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
                         <FileText className="w-5 h-5 text-blue-500 shrink-0" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                           {source.originalName || source.filename}
                         </p>
                         {source.fileType === 'url' ? (
-                          <p className="text-xs text-gray-500 truncate" title={source.sourceUrl}>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate" title={source.sourceUrl}>
                             {source.sourceUrl}
                           </p>
                         ) : (
-                          <p className="text-xs text-gray-500">{formatFileSize(source.fileSize)}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{formatFileSize(source.fileSize)}</p>
                         )}
                       </div>
                     </div>
@@ -351,10 +351,10 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${
                 isDragging
-                  ? 'border-blue-500 bg-blue-50'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                   : uploadStatus === 'uploading' || isStarting
-                  ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                  : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
+                  ? 'border-gray-300 dark:border-zinc-600 bg-gray-50 dark:bg-zinc-800 cursor-not-allowed'
+                  : 'border-gray-300 dark:border-zinc-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-zinc-800'
               }`}
             >
               <input
@@ -372,34 +372,34 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
                     <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent"></div>
                   </div>
                   <div>
-                    <p className="text-lg font-medium text-gray-900">Uploading...</p>
-                    <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
+                    <p className="text-lg font-medium text-gray-900 dark:text-gray-100">Uploading...</p>
+                    <div className="mt-4 w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-2">
                       <div
                         className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                         style={{ width: `${uploadProgress}%` }}
                       ></div>
                     </div>
-                    <p className="text-sm text-gray-600 mt-2">{uploadProgress}%</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{uploadProgress}%</p>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <Upload className="w-16 h-16 text-gray-400 mx-auto" />
+                  <Upload className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto" />
                   <div>
-                    <p className="text-lg font-medium text-gray-900">
+                    <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
                       {uploadedSources.length > 0
                         ? 'Add another source'
                         : 'Drag and drop your source here'}
                     </p>
-                    <p className="text-sm text-gray-600 mt-2">or click to browse</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">or click to browse</p>
                   </div>
                   <div className="flex items-center justify-center gap-4 mt-6">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                       <File className="w-4 h-4" />
                       <span>PDF, DOCX, TXT</span>
                     </div>
-                    <span className="text-gray-400">•</span>
-                    <span className="text-sm text-gray-600">Max 10MB</span>
+                    <span className="text-gray-400 dark:text-gray-500">•</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Max 10MB</span>
                   </div>
                 </div>
               )}
@@ -410,7 +410,7 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
           {uploadMode === 'url' && (
             <div className="space-y-4">
               <div>
-                <label htmlFor="url-input" className="block text-sm font-medium text-gray-900 mb-2">
+                <label htmlFor="url-input" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
                   Web Page URL
                 </label>
                 <div className="flex gap-2">
@@ -426,7 +426,7 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
                     }}
                     placeholder="https://example.com/article"
                     disabled={uploadStatus === 'uploading' || isStarting}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:border-blue-500"
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 disabled:dark:bg-zinc-700 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:border-blue-500"
                   />
                   <button
                     onClick={() => handleUrlUpload(urlInput)}
@@ -448,13 +448,13 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
                 </div>
                 {uploadStatus === 'uploading' && (
                   <div className="mt-4">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-2">
                       <div
                         className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                         style={{ width: `${uploadProgress}%` }}
                       ></div>
                     </div>
-                    <p className="text-sm text-gray-600 mt-2 text-center">{uploadProgress}%</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 text-center">{uploadProgress}%</p>
                   </div>
                 )}
               </div>
@@ -483,9 +483,9 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
 
           {/* Classroom Name Input */}
           {uploadedSources.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
+            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-zinc-700 space-y-4">
               <div>
-                <label htmlFor="classroom-name" className="block text-sm font-medium text-gray-900 mb-2">
+                <label htmlFor="classroom-name" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
                   Classroom Name
                 </label>
                 <input
@@ -495,7 +495,7 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
                   onChange={(e) => setClassroomName(e.target.value)}
                   placeholder="Enter classroom name"
                   disabled={uploadStatus === 'uploading' || isStarting}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:border-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 disabled:dark:bg-zinc-700 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:border-blue-500"
                 />
               </div>
 

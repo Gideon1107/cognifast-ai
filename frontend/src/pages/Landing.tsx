@@ -16,7 +16,7 @@ export function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-zinc-900">
       <Navbar />
 
       {/* Main Content */}
@@ -32,7 +32,7 @@ export function Landing() {
 
         {/* Features Section */}
         <div className="pb-24 space-y-32 px-54">
-          <h2 className="text-5xl md:text-6xl font-bold text-gray-900 text-center mb-24 sansation-regular">
+          <h2 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white text-center mb-24 sansation-regular">
             Your AI-Powered Learning Partner
           </h2>
 
@@ -40,10 +40,10 @@ export function Landing() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <FileText className="w-8 h-8 text-gray-900" />
-                <h3 className="text-3xl font-semibold text-gray-900 sansation-regular">Upload your sources</h3>
+                <FileText className="w-8 h-8 text-gray-900 dark:text-white" />
+                <h3 className="text-3xl font-semibold text-gray-900 dark:text-white sansation-regular">Upload your sources</h3>
               </div>
-              <p className="text-lg text-gray-600 leading-relaxed">
+              <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
                 Upload PDFs, DOCX, and text files, and Cognifast AI will summarize them and make interesting connections between topics, all powered by advanced language models.
               </p>
             </div>
@@ -99,10 +99,10 @@ export function Landing() {
             
             <div className="order-1 lg:order-2">
               <div className="flex items-center gap-3 mb-4">
-                <MessageCircle className="w-8 h-8 text-gray-900" />
-                <h3 className="text-3xl font-semibold text-gray-900">Get instant insights</h3>
+                <MessageCircle className="w-8 h-8 text-gray-900 dark:text-white" />
+                <h3 className="text-3xl font-semibold text-gray-900 dark:text-white">Get instant insights</h3>
               </div>
-              <p className="text-lg text-gray-600 leading-relaxed">
+              <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
                 With all of your sources in place, Cognifast AI gets to work and becomes a personalized AI expert in the information that matters most to you.
               </p>
             </div>
@@ -112,10 +112,10 @@ export function Landing() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <ClipboardCheck className="w-8 h-8 text-gray-900" />
-                <h3 className="text-3xl font-semibold text-gray-900 sansation-regular">Test your knowledge</h3>
+                <ClipboardCheck className="w-8 h-8 text-gray-900 dark:text-white" />
+                <h3 className="text-3xl font-semibold text-gray-900 dark:text-white sansation-regular">Test your knowledge</h3>
               </div>
-              <p className="text-lg text-gray-600 leading-relaxed">
+              <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
                 Generate quizzes automatically from your documents. Test your understanding and track your learning progress over time.
               </p>
             </div>
@@ -141,8 +141,8 @@ export function Landing() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-8">
-        <div className="px-8 text-center text-gray-600">
+      <footer className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-700 py-8">
+        <div className="px-8 text-center text-gray-600 dark:text-gray-400">
           <p>© 2025 Cognifast AI. Built for faster learning.</p>
         </div>
       </footer>

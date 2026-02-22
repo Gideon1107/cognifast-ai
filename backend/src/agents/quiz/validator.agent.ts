@@ -16,7 +16,7 @@ export class ValidatorAgent {
 
     constructor() {
         this.llm = new ChatOpenAI({
-            modelName: "gpt-4o-mini",
+            model: "gpt-4o-mini",
             temperature: 0.1, // Very deterministic for validation
             openAIApiKey: process.env.OPENAI_API_KEY,
         });
@@ -154,9 +154,10 @@ export class ValidatorAgent {
             question: q.question,
             options: q.options,
             correctIndex: q.correctIndex,
+            difficulty: q.difficulty,
         })), null, 2);
 
-        return `You are a quiz quality validator. Validate the following quiz questions against the source material.
+        return `You are a quiz quality validator for a knowledge evaluation platform. Validate the following quiz questions against the source material.
 
 Source Material:
 ${contextText.substring(0, 6000)}
@@ -164,12 +165,16 @@ ${contextText.substring(0, 6000)}
 Questions to Validate:
 ${questionsJson}
 
-For each question, check:
-1. Is the question clear and grammatically correct?
-2. Is the correct answer (at correctIndex) actually correct based on the source?
-3. Are the wrong answers (distractors) clearly incorrect?
-4. For true_false: Is the statement definitively true or false (not ambiguous)?
-5. For multiple_choice: Are there exactly 4 distinct options?
+For each question, check ALL of the following:
+1. CLARITY: Is the question clear, unambiguous, and grammatically correct?
+2. FACTUAL ACCURACY: Is the correct answer (at correctIndex) actually correct based on the source material?
+3. DISTRACTOR QUALITY: Are wrong answers plausible misconceptions rather than obviously incorrect? Fail if any distractor is self-evidently impossible or trivially distinguishable from the correct answer.
+4. TRUE/FALSE VALIDITY: For true_false — is the statement definitively and unambiguously true or false based on the source? Mark invalid if nuanced, context-dependent, or debatable.
+5. MULTIPLE CHOICE FORMAT: For multiple_choice — are there exactly 4 distinct options with no duplicates?
+6. COGNITIVE DEPTH: Is this question above the trivial recall level? Mark invalid if the question is directly answered by reading a single sentence from the source with no reasoning required. Examples of invalid trivial questions: "What is the definition of X?", "What is X?", "Which of the following defines X?". Questions requiring scenario interpretation, application, or multi-step reasoning are valid.
+7. DIFFICULTY LABEL ACCURACY: Does the "difficulty" field match the cognitive level of the question? "recall" = direct fact lookup, "understand" = explain/describe, "apply" = use in a new situation, "analyze" = compare/contrast/cause-effect. Mark invalid if clearly mislabeled (e.g., a scenario-based application question labeled "recall").
+
+A question is INVALID if it fails any one of these seven checks.
 
 Output EXACTLY in this JSON format:
 [
@@ -181,7 +186,7 @@ Output EXACTLY in this JSON format:
   {
     "id": "question-id-here",
     "isValid": false,
-    "issues": ["The correct answer is actually incorrect", "Option B and C are too similar"]
+    "issues": ["Check 6 failed: Question is trivial recall — answerable by reading one sentence without reasoning", "Check 3 failed: Option B is self-evidently impossible"]
   }
 ]
 

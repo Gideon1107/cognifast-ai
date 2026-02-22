@@ -29,7 +29,7 @@ export function CitationTooltip({ source, isOpen, position, placement = 'below' 
 
   return (
     <div
-      className={`fixed z-10000 bg-white rounded-lg shadow-2xl border border-gray-200 w-full max-w-lg max-h-96 overflow-hidden duration-200 ${animationClass}`}
+      className={`fixed z-10000 bg-white dark:bg-zinc-900 rounded-lg shadow-2xl border border-gray-200 dark:border-zinc-800 w-full max-w-lg max-h-96 overflow-hidden duration-200 ${animationClass}`}
       style={{
         left: `${leftPos}px`,
         ...(placement === 'above' 
@@ -43,20 +43,20 @@ export function CitationTooltip({ source, isOpen, position, placement = 'below' 
       aria-labelledby="citation-tooltip-title"
     >
       {/* Header */}
-      <div className="flex items-center gap-2 p-4 border-b border-gray-200 bg-gray-50">
+      <div className="flex items-center gap-2 p-4 border-b border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50">
         {source.sourceType === 'url' ? (
           <Globe className="w-4 h-4 text-blue-600" />
         ) : (
           <FileText className="w-4 h-4 text-blue-600" />
         )}
-        <h3 id="citation-tooltip-title" className="text-sm font-semibold text-gray-900">
+        <h3 id="citation-tooltip-title" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
           {source.sourceName}
         </h3>
       </div>
 
       {/* Content */}
       <div className="p-4 overflow-y-auto max-h-80">
-        <div className="text-sm text-gray-800 leading-7 " style={{ wordBreak: 'break-word' }}>
+        <div className="text-sm text-gray-800 dark:text-gray-200 leading-7 " style={{ wordBreak: 'break-word' }}>
           {source.chunkText}
         </div>
       </div>

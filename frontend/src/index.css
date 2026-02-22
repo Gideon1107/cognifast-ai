@@ -1,3 +1,5 @@
+@variant dark (&:where(.dark, .dark *));
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Sansation:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap');
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
@@ -123,4 +125,17 @@
   font-optical-sizing: auto;
   font-weight: 400;
   font-style: normal;
+}
+
+/* Dark mode scrollbar overrides */
+.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563; /* gray-600 */
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280; /* gray-500 */
+}
+
+.dark * {
+  scrollbar-color: #4b5563 transparent;
 }
