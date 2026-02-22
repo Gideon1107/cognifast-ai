@@ -6,7 +6,9 @@ import {
   text,
   timestamp,
   index,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
+import { conversations } from './conversations';
 
 export const sources = pgTable(
   'sources',
@@ -21,6 +23,10 @@ export const sources = pgTable(
     extractedText: text('extracted_text'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+    conversationId: uuid('conversation_id').references(
+      (): AnyPgColumn => conversations.id,
+      { onDelete: 'cascade' }
+    ),
   },
   (table) => [
     index('idx_sources_created_at').on(table.createdAt),

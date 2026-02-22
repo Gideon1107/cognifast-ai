@@ -12,7 +12,9 @@ export type {
     SourceChunk,
     SourceMetadata,
     SourceRow,
-    SourceType
+    SourceType,
+    ChatPanelProps,
+    CitationState
 } from './entities';
 
 // Retrieval types
