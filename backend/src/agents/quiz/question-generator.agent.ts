@@ -16,7 +16,7 @@ export class QuestionGeneratorAgent {
 
     constructor() {
         this.llm = new ChatOpenAI({
-            modelName: "gpt-4o",
+            model: "gpt-4o",
             temperature: 0.7, // Some creativity for variety
             openAIApiKey: process.env.OPENAI_API_KEY,
         });
@@ -118,11 +118,27 @@ export class QuestionGeneratorAgent {
     private buildCombinedPrompt(numQuestions: number, requestedQuestions: number, contextText: string): string {
         const numConcepts = Math.min(requestedQuestions * 2, 30);
 
-        const recallCount     = Math.max(1, Math.floor(numQuestions * 0.20));
-        const understandCount = Math.max(1, Math.floor(numQuestions * 0.20));
-        const applyCount      = Math.max(2, Math.floor(numQuestions * 0.30));
-        const analyzeCount    = numQuestions - recallCount - understandCount - applyCount;
+        // Tentative counts using enforced minimums
+        let recallCount      = Math.max(1, Math.floor(numQuestions * 0.20));
+        let understandCount  = Math.max(1, Math.floor(numQuestions * 0.20));
+        let applyCount       = Math.max(2, Math.floor(numQuestions * 0.30));
+        let analyzeCount     = Math.max(1, Math.floor(numQuestions * 0.30));
         const integrationCount = Math.max(1, Math.floor(numQuestions * 0.15));
+
+        // Enforce that the four Bloom buckets sum exactly to numQuestions
+        let total = recallCount + understandCount + applyCount + analyzeCount;
+
+        // Shed excess by decrementing above-minimum buckets in priority order
+        while (total > numQuestions) {
+            if      (applyCount > 2)      { applyCount--;      total--; }
+            else if (analyzeCount > 1)    { analyzeCount--;    total--; }
+            else if (understandCount > 1) { understandCount--; total--; }
+            else if (recallCount > 1)     { recallCount--;     total--; }
+            else break; // all at enforced minimums; cannot reduce further
+        }
+
+        // Absorb any shortfall into applyCount
+        while (total < numQuestions) { applyCount++; total++; }
 
         return `You are an expert educator and psychometrician. Perform TWO tasks from the source material below.
 

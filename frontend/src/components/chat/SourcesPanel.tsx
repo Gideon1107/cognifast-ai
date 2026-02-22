@@ -45,11 +45,11 @@ export function SourcesPanel({ sources }: SourcesPanelProps) {
                 <div className="shrink-0">
                   {source.type === 'url' ? (
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center">
-                      <Globe className="w-5 h-5 dark:text-zinc-600" />
+                      <Globe className="w-5 h-5 text-gray-50 dark:text-zinc-600" />
                     </div>
                   ) : (
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center">
-                      <FileText className="w-5 h-5 dark:text-zinc-600" />
+                      <FileText className="w-5 h-5 text-gray-50 dark:text-zinc-600" />
                     </div>
                   )}
                 </div>

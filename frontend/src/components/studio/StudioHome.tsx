@@ -89,7 +89,7 @@ export function StudioHome({
       setError(error instanceof Error ? error.message : 'Failed to generate quiz');
       goToHome();
     } finally {
-      setIsStarting(true);
+      setIsStarting(false);
       setGenerating(false);
     }
   };

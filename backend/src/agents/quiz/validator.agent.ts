@@ -154,6 +154,7 @@ export class ValidatorAgent {
             question: q.question,
             options: q.options,
             correctIndex: q.correctIndex,
+            difficulty: q.difficulty,
         })), null, 2);
 
         return `You are a quiz quality validator for a knowledge evaluation platform. Validate the following quiz questions against the source material.
