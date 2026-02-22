@@ -16,7 +16,7 @@ export class QuestionGeneratorAgent {
 
     constructor() {
         this.llm = new ChatOpenAI({
-            modelName: "gpt-4o-mini",
+            modelName: "gpt-4o",
             temperature: 0.7, // Some creativity for variety
             openAIApiKey: process.env.OPENAI_API_KEY,
         });
@@ -118,29 +118,62 @@ export class QuestionGeneratorAgent {
     private buildCombinedPrompt(numQuestions: number, requestedQuestions: number, contextText: string): string {
         const numConcepts = Math.min(requestedQuestions * 2, 30);
 
-        return `You are an expert educator and quiz creator. Perform TWO tasks from the source material below.
+        const recallCount     = Math.max(1, Math.floor(numQuestions * 0.20));
+        const understandCount = Math.max(1, Math.floor(numQuestions * 0.20));
+        const applyCount      = Math.max(2, Math.floor(numQuestions * 0.30));
+        const analyzeCount    = numQuestions - recallCount - understandCount - applyCount;
+        const integrationCount = Math.max(1, Math.floor(numQuestions * 0.15));
+
+        return `You are an expert educator and psychometrician. Perform TWO tasks from the source material below.
 
 SOURCE MATERIAL:
 ${contextText}
 
 ─── TASK 1: CONCEPT EXTRACTION ───
 Extract the ${numConcepts} most important, quiz-worthy concepts.
-- Factual, testable, specific, and concrete
-- Important to understanding the material
-- Each concept: a short name + brief description
+- Each concept must be specific and testable, not vague or abstract.
+- Each concept: a short name + brief description.
 
 ─── TASK 2: QUESTION GENERATION ───
-Generate exactly ${numQuestions} high-quality quiz questions covering those concepts.
+Generate exactly ${numQuestions} high-quality quiz questions using Bloom's Taxonomy cognitive levels.
 
-Quality rules:
-1. QUESTION VARIETY: Use diverse question formats - don't repeat the same phrasing. Mix what/which/how/why/when.
-2. ONE CONCEPT PER QUESTION: Each question tests one specific concept.
-3. DIFFICULTY: Require real understanding. Use plausible distractors.
-4. EQUATIONS AND FORMULAS: If the content contains equations or formulas, include questions that test understanding of them. Use LaTeX: $CO_2$, $H_2O$, $\\frac{a}{b}$, $\\rightarrow$.
-5. FORMAT: Prefer multiple_choice (4 options). Use true_false only for straightforward factual claims.
-6. LaTeX: Use $...$ for all chemical formulas and math. DO NOT wrap LaTeX in markdown.
+BLOOM'S TAXONOMY DISTRIBUTION — follow this exactly:
+- L1 Recall (≤20%):     ${recallCount} question(s) — definitions and basic facts only. Permitted sparingly.
+- L2 Understand (~20%): ${understandCount} question(s) — explain mechanisms, describe why something works.
+- L3 Apply (~30%):      ${applyCount} question(s) — use knowledge in a new situation, solve a problem, predict an outcome.
+- L4 Analyze (~30%):    ${analyzeCount} question(s) — compare/contrast, cause-and-effect, evaluate claims, explain relationships.
 
-OUTPUT FORMAT — Output ONLY valid JSON with this exact structure:
+WHAT EACH LEVEL LOOKS LIKE:
+L1 Recall: "Which of the following is the definition of X?" — Use sparingly.
+L2 Understand: "Which of the following correctly describes how X works?" or "A student claims X causes Y. Which explanation best supports this?"
+L3 Apply: "A researcher observes [scenario]. Which of the following best explains the result?" or "If [variable] were doubled, what would happen to [outcome]?"
+L4 Analyze: "Which of the following correctly explains WHY X leads to Y?" or "What is the most significant difference between X and Y in how they affect [outcome]?"
+
+PROHIBITED QUESTION PATTERNS — never generate these:
+- "What is the definition of X?"
+- "What is X?"
+- "Which of the following defines X?"
+- "True or False: X is defined as Y."
+- Any question answerable by reading a single sentence from the source without reasoning.
+More than ${recallCount} recall-level questions is a hard failure.
+
+DISTRACTOR RULES — wrong answers must be sophisticated:
+- Distractors must be plausible misconceptions, not obviously absurd.
+- Each distractor must represent a real error a learner could make: a confusion between related concepts, an incorrect application of a correct principle, or a reversal of cause and effect.
+- Never use "all of the above" or "none of the above."
+- Never make one option dramatically shorter or longer than the others.
+- Never use an option that is self-evidently impossible or logically absurd.
+
+INTEGRATION: At least ${integrationCount} question(s) must require integrating knowledge from two or more concepts. These are typically L3 or L4.
+
+ADDITIONAL RULES:
+1. QUESTION VARIETY: Mix question stems — "which of the following...", "a researcher observes...", "if X is true, what follows...", "what is the most likely explanation for..."
+2. ONE CONCEPT PER QUESTION (integration questions may touch two).
+3. EQUATIONS AND FORMULAS: Include questions that require reasoning about equations where present. Use LaTeX: $CO_2$, $H_2O$, $\\frac{a}{b}$, $\\rightarrow$.
+4. FORMAT: Prefer multiple_choice (4 options). Use true_false ONLY for statements that are definitively and unambiguously true or false.
+5. LaTeX: Use $...$ for all formulas and chemical notation. DO NOT wrap in markdown code blocks.
+
+OUTPUT FORMAT — output ONLY valid JSON with this exact structure:
 {
   "concepts": [
     "Concept Name: Brief description",
@@ -149,26 +182,29 @@ OUTPUT FORMAT — Output ONLY valid JSON with this exact structure:
   "questions": [
     {
       "type": "multiple_choice",
-      "question": "In the context of [topic], what is...?",
+      "question": "A researcher observes that [scenario]. Which of the following best explains this result?",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctIndex": 2,
-      "concept": "Concept Name"
+      "concept": "Concept Name",
+      "difficulty": "apply"
     },
     {
       "type": "true_false",
-      "question": "A statement that is definitively true or false.",
+      "question": "A statement that is definitively and unambiguously true or false.",
       "options": ["True", "False"],
       "correctIndex": 0,
-      "concept": "Concept Name"
+      "concept": "Concept Name",
+      "difficulty": "recall"
     }
   ]
 }
 
 IMPORTANT:
-- correctIndex is 0-based. Vary it across questions.
+- correctIndex is 0-based. Vary it — do not cluster correct answers at index 0 or 1.
 - For true_false, options must be exactly ["True", "False"].
+- difficulty must be one of: "recall", "understand", "apply", "analyze".
 - For reaction equations: never use the exact reverse as a wrong option.
-- Output ONLY the JSON object, no other text or markdown.
+- Output ONLY the JSON object. No other text or markdown fences.
 
 Generate now:`;
     }
@@ -189,7 +225,7 @@ Generate now:`;
         const conceptsToUse = uncoveredConcepts.length > 0 ? uncoveredConcepts : allConcepts;
         const conceptList = conceptsToUse.map((c, i) => `${i + 1}. ${c}`).join('\n');
 
-        return `You are an expert quiz creator. Generate exactly ${numQuestions} NEW quiz questions from the concepts and source material below. These are REPLACEMENT questions — do not repeat questions that were already generated.
+        return `You are an expert quiz creator. Generate exactly ${numQuestions} REPLACEMENT quiz questions from the concepts and source material below. Do not repeat previously generated questions.
 
 Concepts to cover (prioritise uncovered ones):
 ${conceptList}
@@ -197,12 +233,23 @@ ${conceptList}
 Source Material:
 ${contextText}
 
-Quality rules:
-1. QUESTION VARIETY: Diverse formats, mix what/which/how/why/when.
-2. ONE CONCEPT PER QUESTION.
-3. DIFFICULTY: Plausible distractors, require real understanding.
-4. LaTeX: $...$ for formulas and chemical elements.
-5. FORMAT: Prefer multiple_choice (4 options). true_false only for straightforward facts.
+BLOOM'S TAXONOMY — replacement questions must maintain cognitive depth:
+- At most 1 recall-level (L1) question regardless of total count.
+- Aim for L2 (understand), L3 (apply), and L4 (analyze).
+- L3 Apply: "A researcher observes [scenario]. Which of the following best explains this?" or "If X were doubled, what would happen to Y?"
+- L4 Analyze: "Which of the following correctly explains why X leads to Y?" or "What is the most significant difference between X and Y?"
+
+PROHIBITED: Do not generate "What is X?" or "Which defines X?" style questions.
+
+DISTRACTOR RULES:
+- Distractors must be plausible misconceptions a learner could genuinely hold.
+- Never use absurd or obviously impossible options.
+
+ADDITIONAL RULES:
+1. Mix question stems for variety.
+2. ONE primary concept per question.
+3. LaTeX: $...$ for formulas and chemical elements.
+4. Prefer multiple_choice (4 options). Use true_false only for unambiguous factual claims.
 
 Output EXACTLY in this JSON format (valid JSON array):
 [
@@ -211,13 +258,15 @@ Output EXACTLY in this JSON format (valid JSON array):
     "question": "...",
     "options": ["A", "B", "C", "D"],
     "correctIndex": 2,
-    "concept": "Concept Name"
+    "concept": "Concept Name",
+    "difficulty": "apply"
   }
 ]
 
 IMPORTANT:
 - correctIndex is 0-based. Vary it across questions.
-- Output ONLY the JSON array, no other text.
+- difficulty must be one of: "recall", "understand", "apply", "analyze".
+- Output ONLY the JSON array. No other text.
 
 Generate ${numQuestions} questions now:`;
     }
@@ -341,6 +390,9 @@ Generate ${numQuestions} questions now:`;
 
                 const concept = item.concept || concepts[0] || 'General';
 
+                const VALID_DIFFICULTIES = ['recall', 'understand', 'apply', 'analyze'];
+                const difficulty = VALID_DIFFICULTIES.includes(item.difficulty) ? item.difficulty : undefined;
+
                 questions.push({
                     id: uuidv4(),
                     type,
@@ -348,6 +400,7 @@ Generate ${numQuestions} questions now:`;
                     options,
                     correctIndex,
                     concept,
+                    difficulty,
                 });
             }
 

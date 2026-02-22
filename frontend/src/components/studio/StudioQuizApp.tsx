@@ -63,7 +63,7 @@ export function StudioQuizApp({
 
   // Summary view
   const containerClasses = isQuizExpanded
-    ? 'fixed inset-4 z-50 bg-white rounded-xl border border-gray-200 shadow-2xl flex flex-col'
+    ? 'fixed inset-4 z-50 bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-700 shadow-2xl flex flex-col'
     : 'flex flex-col h-full';
 
   if (quizStep === 'summary' && summary) {
@@ -112,7 +112,7 @@ export function StudioQuizApp({
           />
         )}
         <div className={containerClasses}>
-          <div className="p-6 text-center text-gray-500 text-sm">No question available</div>
+          <div className="p-6 text-center text-gray-500 dark:text-gray-400 text-sm">No question available</div>
         </div>
       </>
     );
@@ -159,14 +159,14 @@ Help me understand why my answer was incorrect.`;
 
   const getOptionStyles = (optionIndex: number) => {
     if (!hasAnswered) {
-      return 'bg-gray-50 hover:bg-gray-100 border-gray-200 hover:border-gray-300';
+      return 'bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 border-gray-200 dark:border-zinc-600 hover:border-gray-300 dark:hover:border-gray-500';
     }
 
     const isSelected = answer.selectedIndex === optionIndex;
     const isCorrect = answer.correctIndex === optionIndex;
     // Vibrant red/green to match reference: clear medium-bright alert red and success green
-    const wrongStyles = 'bg-red-50 border-2 border-red-500';
-    const correctStyles = 'bg-green-50 border-2 border-green-500';
+    const wrongStyles = 'bg-red-50 dark:bg-red-900/20 border-2 border-red-500';
+    const correctStyles = 'bg-green-50 dark:bg-green-900/20 border-2 border-green-500';
 
     if (isSelected && answer.correct) {
       return correctStyles;
@@ -177,7 +177,7 @@ Help me understand why my answer was incorrect.`;
     if (isCorrect) {
       return correctStyles;
     }
-    return 'bg-gray-50 border-gray-200 opacity-50';
+    return 'bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-600 opacity-50';
   };
 
   // Render text with LaTeX
@@ -204,25 +204,25 @@ Help me understand why my answer was incorrect.`;
         <div className="p-4">
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 sansation-regular">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white sansation-regular">
                 {conversationTitle ? `${conversationTitle} Quiz` : 'Quiz'}
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Based on {sourceCount} source{sourceCount !== 1 ? 's' : ''}
               </p>
             </div>
             <button
               onClick={toggleQuizPanel}
-              className="p-1.5 hover:bg-gray-100 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               aria-label={isQuizExpanded ? 'Exit expanded quiz panel' : 'Expand quiz panel'}
               aria-pressed={isQuizExpanded}
               title={isQuizExpanded ? 'Exit expanded quiz panel' : 'Expand quiz panel'}
               type="button"
             >
               {isQuizExpanded ? (
-                <Minimize2 className="w-4 h-4 text-gray-400" />
+                <Minimize2 className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               ) : (
-                <Maximize2 className="w-4 h-4 text-gray-400" />
+                <Maximize2 className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               )}
             </button>
           </div>
@@ -231,12 +231,12 @@ Help me understand why my answer was incorrect.`;
         {/* Question Content */}
         <div className="flex-1 overflow-y-auto p-4">
           {/* Progress */}
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
             {currentIndex + 1} / {questions.length}
           </p>
 
           {/* Question */}
-          <div className="text-gray-900 text-base leading-relaxed mb-6">
+          <div className="text-gray-900 dark:text-gray-100 text-base leading-relaxed mb-6">
             {renderText(question.question)}
           </div>
 
@@ -255,10 +255,10 @@ Help me understand why my answer was incorrect.`;
                     !hasAnswered && !isSubmitting ? 'cursor-pointer' : 'cursor-default'
                   } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
                 >
-                  <span className="shrink-0 text-gray-500 font-medium">
+                  <span className="shrink-0 text-gray-500 dark:text-gray-400 font-medium">
                     {String.fromCharCode(65 + index)}.
                   </span>
-                  <span className="flex-1 text-gray-900">{renderText(option)}</span>
+                  <span className="flex-1 text-gray-900 dark:text-gray-100">{renderText(option)}</span>
                   {hasAnswered && (
                     <span className="shrink-0">
                       {isSelected && answer.correct && (
@@ -283,7 +283,7 @@ Help me understand why my answer was incorrect.`;
               {!answer.correct ? (
                 <button
                   onClick={handleExplain}
-                  className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-full border border-blue-200 text-sm font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  className="flex items-center gap-2 px-4 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full border border-blue-200 dark:border-blue-700 text-sm font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                 >
                   <MessageSquareDot className="w-4 h-4" />
                   Explain
@@ -345,25 +345,25 @@ function QuizSummaryView({
       <div className="p-4">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               {conversationTitle ? `${conversationTitle} Quiz` : 'Quiz'}
             </h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Based on {sourceCount} source{sourceCount !== 1 ? 's' : ''}
             </p>
           </div>
           <button
             onClick={onToggleExpand}
-            className="p-1.5 hover:bg-gray-100 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             aria-label={isQuizExpanded ? 'Exit expanded quiz panel' : 'Expand quiz panel'}
             aria-pressed={isQuizExpanded}
             title={isQuizExpanded ? 'Exit expanded quiz panel' : 'Expand quiz panel'}
             type="button"
           >
             {isQuizExpanded ? (
-              <Minimize2 className="w-4 h-4 text-gray-400" />
+              <Minimize2 className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             ) : (
-              <Maximize2 className="w-4 h-4 text-gray-400" />
+              <Maximize2 className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             )}
           </button>
         </div>
@@ -372,8 +372,8 @@ function QuizSummaryView({
       {/* Summary Content */}
       <div className="flex-1 flex flex-col items-center justify-center p-6">
         {/* Trophy */}
-        <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
-          <Trophy className="w-8 h-8 text-yellow-600" />
+        <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mb-4">
+          <Trophy className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />
         </div>
 
         {/* Message */}
@@ -382,30 +382,30 @@ function QuizSummaryView({
         </h3>
 
         {/* Score */}
-        <p className="text-4xl font-bold text-gray-900">{summary.score}%</p>
-        <p className="text-sm text-gray-500 mb-6">Your Score</p>
+        <p className="text-4xl font-bold text-gray-900 dark:text-white">{summary.score}%</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Your Score</p>
 
         {/* Stats */}
         <div className="flex gap-8 mb-6">
           <div className="flex items-center gap-2">
             <CheckCircle className="w-5 h-5 text-green-600" />
-            <span className="text-lg font-medium text-gray-900">{summary.correctCount}</span>
-            <span className="text-sm text-gray-500">correct</span>
+            <span className="text-lg font-medium text-gray-900 dark:text-white">{summary.correctCount}</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">correct</span>
           </div>
           <div className="flex items-center gap-2">
             <XCircle className="w-5 h-5 text-red-600" />
-            <span className="text-lg font-medium text-gray-900">{summary.wrongCount}</span>
-            <span className="text-sm text-gray-500">wrong</span>
+            <span className="text-lg font-medium text-gray-900 dark:text-white">{summary.wrongCount}</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">wrong</span>
           </div>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-gray-200 dark:border-zinc-700">
         <div className="flex gap-2">
           <button
             onClick={onRetake}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-zinc-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           >
             <RotateCcw className="w-4 h-4" />
             New Quiz

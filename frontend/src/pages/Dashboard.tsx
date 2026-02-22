@@ -169,17 +169,17 @@ export function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-900">
       <Navbar />
 
       {/* Main Content */}
       <main id="main-content" tabIndex={-1} className="px-8 py-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 sansation-regular">My Classrooms</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white sansation-regular">My Classrooms</h1>
           <button
             onClick={() => navigate('/chat')}
-            className="inline-flex items-center gap-2 bg-white text-gray-900 px-6 py-3 rounded-full font-medium hover:bg-gray-100 transition-colors"
+            className="inline-flex items-center gap-2 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 px-6 py-3 rounded-full font-medium hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
           >
             <Plus className="w-5 h-5" />
             Create new
@@ -189,8 +189,8 @@ export function Dashboard() {
         {/* Recent Classrooms */}
         <div>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 sansation-regular">Recent classrooms</h2>
-            <button className="text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white sansation-regular">Recent classrooms</h2>
+            <button className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-sm font-medium transition-colors">
               See all →
             </button>
           </div>
@@ -199,12 +199,12 @@ export function Dashboard() {
             {/* Create New Card */}
             <div
               onClick={() => navigate('/chat')}
-              className="bg-white border-2 border-dashed border-gray-300 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-all min-h-[200px]"
+              className="bg-white dark:bg-zinc-800 border-2 border-dashed border-gray-300 dark:border-zinc-600 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 dark:hover:border-zinc-500 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-all min-h-[200px]"
             >
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                <Plus className="w-6 h-6 text-gray-600" />
+              <div className="w-12 h-12 bg-gray-100 dark:bg-zinc-700 rounded-full flex items-center justify-center mb-3">
+                <Plus className="w-6 h-6 text-gray-600 dark:text-gray-400" />
               </div>
-              <p className="text-base font-medium text-gray-900">Create new classroom</p>
+              <p className="text-base font-medium text-gray-900 dark:text-gray-100">Create new classroom</p>
             </div>
 
             {/* Loading Skeletons */}
@@ -212,16 +212,16 @@ export function Dashboard() {
               Array.from({ length: 4 }).map((_, idx) => (
                 <div
                   key={`skeleton-${idx}`}
-                  className="bg-white rounded-2xl p-6 border border-gray-200 min-h-[280px] flex flex-col animate-pulse"
+                  className="bg-white dark:bg-zinc-800 rounded-2xl p-6 border border-gray-200 dark:border-zinc-700 min-h-[280px] flex flex-col animate-pulse"
                 >
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 bg-gray-200 rounded-xl"></div>
-                    <div className="w-8 h-8 bg-gray-200 rounded-lg"></div>
+                    <div className="w-12 h-12 bg-gray-200 dark:bg-zinc-700 rounded-xl"></div>
+                    <div className="w-8 h-8 bg-gray-200 dark:bg-zinc-700 rounded-lg"></div>
                   </div>
-                  <div className="h-6 bg-gray-200 rounded mb-2 flex-1"></div>
+                  <div className="h-6 bg-gray-200 dark:bg-zinc-700 rounded mb-2 flex-1"></div>
                   <div className="space-y-2">
-                    <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-zinc-700 rounded w-2/3"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-zinc-700 rounded w-1/2"></div>
                   </div>
                 </div>
               ))
@@ -230,7 +230,7 @@ export function Dashboard() {
               conversations.map((conv) => (
                 <div
                   key={conv.id}
-                  className="group bg-gray-100 rounded-2xl p-5 cursor-pointer shadow-md hover:shadow-xl transition-all duration-300 min-h-[240px] flex flex-col relative hover:-rotate-1"
+                  className="group bg-gray-100 dark:bg-zinc-800 rounded-2xl p-5 cursor-pointer shadow-md hover:shadow-xl transition-all duration-300 min-h-[240px] flex flex-col relative hover:-rotate-1"
                   onClick={() => navigate(`/chat/${conv.id}`)}
                 >
                   <div className="flex items-start justify-between mb-4">
@@ -240,14 +240,14 @@ export function Dashboard() {
                     <div className="relative" ref={menuRef}>
                       <button
                         onClick={(e) => handleMenuClick(e, conv.id)}
-                        className="p-2 hover:bg-gray-200 rounded-lg transition-all opacity-50 hover:opacity-100 cursor-pointer"
+                        className="p-2 hover:bg-gray-200 dark:hover:bg-zinc-700 rounded-lg transition-all opacity-50 hover:opacity-100 cursor-pointer"
                         type="button"
                       >
-                        <MoreVertical className="w-5 h-5 text-gray-600" />
+                        <MoreVertical className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                       </button>
                       {openMenuId === conv.id && (
-                        <div 
-                          className="absolute right-0 top-10 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-20 min-w-[180px]"
+                        <div
+                          className="absolute right-0 top-10 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 z-20 min-w-[180px]"
                           data-menu-dropdown
                           onClick={(e) => {
                             e.stopPropagation();
@@ -260,7 +260,7 @@ export function Dashboard() {
                               e.preventDefault();
                               handleEditClick(conv.id);
                             }}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
                             type="button"
                           >
                             Edit
@@ -280,11 +280,11 @@ export function Dashboard() {
                       )}
                     </div>
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-700 mb-4 pt-14 flex-1 leading-tight sansation-regular">
+                  <h3 className="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-4 pt-14 flex-1 leading-tight sansation-regular">
                     {conv.title || 'Untitled Classroom'}
                   </h3>
                   <div className="mt-auto">
-                    <p className="text-gray-400 text-sm">
+                    <p className="text-gray-400 dark:text-gray-500 text-sm">
                       {new Date(conv.createdAt).toLocaleDateString('en-US', { 
                         month: 'short', 
                         day: 'numeric', 
@@ -312,28 +312,28 @@ export function Dashboard() {
           />
 
           {/* Dialog */}
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
+          <div className="relative bg-white dark:bg-zinc-800 rounded-2xl shadow-2xl w-full max-w-md mx-4">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900 sansation-regular">Delete Conversation</h2>
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-zinc-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white sansation-regular">Delete Conversation</h2>
               <button
                 onClick={handleCancelDelete}
                 disabled={isDeleting}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <X className="w-5 h-5 text-gray-600" />
+                <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
             </div>
 
             {/* Content */}
             <div className="p-6 space-y-4">
-              <p className="text-gray-700">
+              <p className="text-gray-700 dark:text-gray-300">
                 Are you sure you want to delete this conversation? This action cannot be undone.
               </p>
 
               {updateError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-700">{updateError}</p>
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-sm text-red-700 dark:text-red-400">{updateError}</p>
                 </div>
               )}
 
@@ -342,7 +342,7 @@ export function Dashboard() {
                 <button
                   onClick={handleCancelDelete}
                   disabled={isDeleting}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
@@ -376,23 +376,23 @@ export function Dashboard() {
           />
 
           {/* Dialog */}
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
+          <div className="relative bg-white dark:bg-zinc-800 rounded-2xl shadow-2xl w-full max-w-md mx-4">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900 sansation-regular">Edit Conversation Name</h2>
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-zinc-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white sansation-regular">Edit Conversation Name</h2>
               <button
                 onClick={handleCancelEdit}
                 disabled={isUpdating}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <X className="w-5 h-5 text-gray-600" />
+                <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
             </div>
 
             {/* Content */}
             <div className="p-6 space-y-4">
               <div>
-                <label htmlFor="edit-title" className="block text-sm font-medium text-gray-900 mb-2">
+                <label htmlFor="edit-title" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
                   Conversation Name
                 </label>
                 <input
@@ -402,7 +402,7 @@ export function Dashboard() {
                   onChange={(e) => setEditTitle(e.target.value)}
                   placeholder="Enter conversation name"
                   disabled={isUpdating}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:border-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 disabled:dark:bg-zinc-600 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:border-blue-500"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !isUpdating && editTitle.trim()) {
                       handleSaveEdit();
@@ -416,8 +416,8 @@ export function Dashboard() {
               </div>
 
               {updateError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-700">{updateError}</p>
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-sm text-red-700 dark:text-red-400">{updateError}</p>
                 </div>
               )}
 
@@ -426,7 +426,7 @@ export function Dashboard() {
                 <button
                   onClick={handleCancelEdit}
                   disabled={isUpdating}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>

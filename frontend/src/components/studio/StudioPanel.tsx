@@ -59,10 +59,10 @@ export function StudioPanel({
   const viewTitle = getViewTitle();
 
   return (
-    <div className="bg-white flex flex-col border border-gray-100 rounded-xl overflow-hidden h-full">
+    <div className="bg-white dark:bg-zinc-900 flex flex-col border border-gray-100 dark:border-zinc-900 rounded-xl overflow-hidden h-full">
       {/* Header with navigation */}
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-        <div className="flex items-center gap-1 text-lg font-semibold text-gray-600 sansation-regular">
+      <div className="p-4 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between">
+        <div className="flex items-center gap-1 text-lg font-semibold text-gray-600 dark:text-gray-300 sansation-regular">
           {viewTitle ? (
             <>
               <button
@@ -70,23 +70,23 @@ export function StudioPanel({
                   onQuizClose?.();
                   goToHome();
                 }}
-                className="hover:text-gray-900 transition-colors cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                className="hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               >
                 Studio
               </button>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-900">{viewTitle}</span>
+              <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <span className="text-gray-900 dark:text-white">{viewTitle}</span>
             </>
           ) : (
             <span>Studio</span>
           )}
         </div>
         <button
-          className="p-1.5 hover:bg-gray-100 rounded-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           aria-label="Collapse studio panel"
           title="Collapse Studio"
         >
-          <PanelRight className="w-4 h-4 text-gray-500" />
+          <PanelRight className="w-4 h-4 text-gray-500 dark:text-gray-400" />
         </button>
       </div>
 

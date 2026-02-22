@@ -239,12 +239,12 @@ export function Chat() {
   // Show loading state
   if (conversationId && isLoadingConversation) {
     return (
-      <div className="h-screen flex flex-col bg-gray-50">
+      <div className="h-screen flex flex-col bg-gray-50 dark:bg-zinc-950">
         <Navbar />
         <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading conversation...</p>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading conversation...</p>
           </div>
         </main>
       </div>
@@ -252,7 +252,7 @@ export function Chat() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden" style={{ position: 'relative' }}>
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-zinc-950 overflow-hidden" style={{ position: 'relative' }}>
       <Navbar />
 
       {/* Source Upload Modal */}
@@ -267,7 +267,7 @@ export function Chat() {
       />
 
       {/* 3-Column Layout */}
-      <main id="main-content" tabIndex={-1} ref={containerRef} className="flex-1 flex overflow-hidden px-4 pt-2 pb-2">
+      <main id="main-content" tabIndex={-1} ref={containerRef} className="flex-1 flex overflow-hidden px-4 pt-2 pb-2 gap-1">
         {/* Left Sidebar - Sources */}
         <div style={{ flex: `0 0 ${widths.sources}%`, minWidth: 0 }}>
           <SourcesPanel sources={sources} />
@@ -279,7 +279,7 @@ export function Chat() {
           onDoubleClick={resetWidths}
           className="w-1 cursor-col-resize transition-colors shrink-0 flex items-center justify-center group"
         >
-          <div className="w-0.5 h-8 bg-gray-200 group-hover:bg-blue-400 rounded-full transition-colors" />
+          {/* <div className="w-0.5 h-8 bg-gray-200 dark:bg-zinc-700 group-hover:bg-blue-400 rounded-full transition-colors" /> */}
         </div>
 
         {/* Center - Chat Interface */}
@@ -302,7 +302,7 @@ export function Chat() {
           onDoubleClick={resetWidths}
           className="w-1 cursor-col-resize transition-colors shrink-0 flex items-center justify-center group"
         >
-          <div className="w-0.5 h-8 bg-gray-200 group-hover:bg-blue-400 rounded-full transition-colors" />
+          {/* <div className="w-0.5 h-8 bg-gray-200 dark:bg-zinc-700 group-hover:bg-blue-400 rounded-full transition-colors" /> */}
         </div>
 
         {/* Right Sidebar - Studio */}
