@@ -11,8 +11,7 @@ services:
       POSTGRES_DB: cognifast_db
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
-      - ./backend/src/db/vector_search_function.sql:/docker-entrypoint-initdb.d/02-vector-search.sql
+      - ./backend/src/db/init-extensions.sql:/docker-entrypoint-initdb.d/01-extensions.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cognifast -d cognifast_db"]
       interval: 5s

@@ -91,3 +91,27 @@ export interface SourceRow {
     updatedAt: Date | null;
 }
 
+/**
+ * Chat Panel Props
+ */
+export interface ChatPanelProps {
+    conversationId: string | null;
+    title: string;
+    sourceCount: number;
+    messages: Message[];
+    message: string;
+    setMessage: (message: string) => void;
+    onSendMessage: () => void;
+    isLoading: boolean;
+  }
+  
+  /**
+   * Citation State
+   */
+export interface CitationState {
+    source: MessageSource;
+    position: { x: number; y: number };
+    placement: 'above' | 'below';
+  }
+ 
+

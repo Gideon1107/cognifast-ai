@@ -6,24 +6,8 @@ import { useState, useRef, useEffect } from 'react';
 import { FileText, ArrowRight, User, Bot } from 'lucide-react';
 import { CitationTooltip } from './CitationTooltip';
 import { renderWithLatex } from '../../utils/latex';
-import type { Message, MessageSource } from '@shared/types';
+import type { Message, MessageSource, ChatPanelProps, CitationState } from '@shared/types';
 
-interface ChatPanelProps {
-  conversationId: string | null;
-  title: string;
-  sourceCount: number;
-  messages: Message[];
-  message: string;
-  setMessage: (message: string) => void;
-  onSendMessage: () => void;
-  isLoading: boolean;
-}
-
-interface CitationState {
-  source: MessageSource;
-  position: { x: number; y: number };
-  placement: 'above' | 'below';
-}
 
 export function ChatPanel({
   conversationId,
@@ -55,10 +39,11 @@ export function ChatPanel({
   }, [messages.length, isLoading]);
 
   // Instant scroll while the last message streams in
+  const lastMessageContent = messages[messages.length - 1]?.content
   useEffect(() => {
     if (messages.length === 0) return;
     scrollToBottom(false);
-  }, [messages[messages.length - 1]?.content]);
+  }, [lastMessageContent, messages.length]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {

@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/dbConnection';
 import { conversations, conversationSources, messages, sources } from '../db/schema';
 import { eq, inArray, asc, desc } from 'drizzle-orm';
+import { StorageService } from './storage.service';
 import { executeChatGraph, streamChatGraph } from '../graphs/chat.graph';
 import type { SourceType } from '@shared/types';
 import {
@@ -422,8 +423,35 @@ export class ChatService {
 
     static async deleteConversation(conversationId: string): Promise<void> {
         try {
+            // 1. Fetch source IDs and file paths BEFORE deletion (rows gone after cascade)
+            const linkedSources = await db
+                .select({ id: sources.id, filePath: sources.filePath, fileType: sources.fileType })
+                .from(conversationSources)
+                .innerJoin(sources, eq(conversationSources.sourceId, sources.id))
+                .where(eq(conversationSources.conversationId, conversationId));
+
+            // 2. Delete conversation — DB cascade handles:
+            //    messages, conversation_sources, quizzes, quiz_attempts
             await db.delete(conversations).where(eq(conversations.id, conversationId));
             logger.info(`Conversation deleted: ${conversationId}`);
+
+            // 3. Delete source rows and their chunks (cascade: source_chunks)
+            if (linkedSources.length > 0) {
+                const sourceIds = linkedSources.map(s => s.id);
+                await db.delete(sources).where(inArray(sources.id, sourceIds));
+            }
+
+            // 4. Delete physical files (non-fatal, skip URL sources)
+            const storageService = new StorageService();
+            for (const source of linkedSources) {
+                if (source.fileType !== 'url') {
+                    try {
+                        await storageService.deleteFile(source.filePath);
+                    } catch (fileError: any) {
+                        logger.warn(`Failed to delete file ${source.filePath}: ${fileError.message}`);
+                    }
+                }
+            }
         } catch (error: any) {
             logger.error(`Error deleting conversation: ${error.message}`);
             throw error;

@@ -174,8 +174,10 @@ npm run db:up
 This runs `docker compose up -d`, which:
 - Pulls the `pgvector/pgvector:pg17` image
 - Creates the `cognifast_db` database
-- Runs `schema.sql` and `vector_search_function.sql` automatically
+- Installs the `pgvector` extension
 - Exposes Postgres on **port 5433** (to avoid conflicts with a local install)
+
+> Migrations (tables, indexes, functions) are applied automatically when you run `npm run dev` for the first time.
 
 Other database commands:
 
@@ -251,9 +253,8 @@ Cognifast-ai/
 │       ├── db/
 │       │   ├── dbConnection.ts      # Drizzle + pg Pool setup
 │       │   ├── schema/              # Drizzle table definitions
-│       │   ├── schema.sql           # Raw SQL schema (auto-applied by Docker)
-│       │   ├── vector_search_function.sql
-│       │   └── migrations/          # Incremental SQL migrations
+│       │   ├── drizzle-migrations/  # Drizzle migration files (auto-applied on npm run dev)
+│       │   └── init-extensions.sql  # Docker init: installs pgvector extension
 │       ├── graphs/                  # LangGraph definitions (chat + quiz)
 │       ├── routes/                  # REST route definitions (chat, source, quiz)
 │       ├── services/                # Business logic (chat, embedding, retrieval, quiz, storage)
@@ -328,7 +329,6 @@ PostgreSQL 17 with pgvector, running in Docker via `docker-compose.yml`.
 | `messages` | Chat history with citation JSONB |
 | `quizzes` | Generated quiz questions (JSONB) |
 | `quiz_attempts` | User answers, scores, and completion status |
-| `source_summaries` | AI-generated source summaries |
 
 Connection uses `DATABASE_URL` with Drizzle ORM and a raw `pg` Pool for vector search RPCs.
 
@@ -336,8 +336,16 @@ Connection uses `DATABASE_URL` with Drizzle ORM and a raw `pg` Pool for vector s
 
 ## Roadmap
 
+### Studio Features
+- [ ] Audio Overview — AI audio summary of uploaded sources
+- [ ] Video Overview — Visual video summary of sources
+- [ ] Mind Map — Interactive mind map of key concepts
+- [ ] Knowledge Gap — Identifies gaps in your understanding
+- [ ] Reports — Analytics and performance reports
+- [ ] Flashcards — Spaced repetition flashcards from sources
+
+### Platform
 - [ ] User authentication and sessions
-- [ ] AI-powered document summarization (Studio panel)
 - [ ] Performance analytics dashboard
 - [ ] Dark mode
 - [ ] Export conversations as PDF
