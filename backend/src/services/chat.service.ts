@@ -445,7 +445,11 @@ export class ChatService {
             const storageService = new StorageService();
             for (const source of linkedSources) {
                 if (source.fileType !== 'url') {
-                    await storageService.deleteFile(source.filePath);
+                    try {
+                        await storageService.deleteFile(source.filePath);
+                    } catch (fileError: any) {
+                        logger.warn(`Failed to delete file ${source.filePath}: ${fileError.message}`);
+                    }
                 }
             }
         } catch (error: any) {
