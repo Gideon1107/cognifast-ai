@@ -16,7 +16,7 @@ export class ValidatorAgent {
 
     constructor() {
         this.llm = new ChatOpenAI({
-            modelName: "gpt-4o-mini",
+            model: "gpt-4o-mini",
             temperature: 0.1, // Very deterministic for validation
             openAIApiKey: process.env.OPENAI_API_KEY,
         });

@@ -14,7 +14,7 @@ export class QualityAgent {
 
     constructor() {
         this.llm = new ChatOpenAI({
-            modelName: 'gpt-4o-mini',
+            model: 'gpt-4o-mini',
             temperature: 0, // Deterministic evaluation
             openAIApiKey: process.env.OPENAI_API_KEY
         });

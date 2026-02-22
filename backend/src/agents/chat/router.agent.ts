@@ -18,7 +18,7 @@ export class RouterAgent {
 
     constructor() {
         this.llm = new ChatOpenAI({
-            modelName: 'gpt-4o-mini', // Fast model for routing
+            model: 'gpt-4o-mini', // Fast model for routing
             temperature: 0, // Deterministic routing
             openAIApiKey: process.env.OPENAI_API_KEY
         });

@@ -13,7 +13,7 @@ export class ConceptExtractorAgent {
 
     constructor() {
         this.llm = new ChatOpenAI({
-            modelName: "gpt-4o-mini",
+            model: "gpt-4o-mini",
             temperature: 0.3, // Lower for more consistent extraction
             openAIApiKey: process.env.OPENAI_API_KEY,
         });

@@ -134,7 +134,17 @@ export class QuestionGeneratorAgent {
             else if (analyzeCount > 1)    { analyzeCount--;    total--; }
             else if (understandCount > 1) { understandCount--; total--; }
             else if (recallCount > 1)     { recallCount--;     total--; }
-            else break; // all at enforced minimums; cannot reduce further
+            else break; // all at enforced minimums; fall through to second pass
+        }
+
+        // Second pass: enforced minimums sum > numQuestions (numQuestions < 5).
+        // Relax buckets to 0, shedding lower Bloom levels first to preserve higher-order thinking.
+        while (total > numQuestions) {
+            if      (recallCount > 0)     { recallCount--;     total--; }
+            else if (understandCount > 0) { understandCount--; total--; }
+            else if (analyzeCount > 0)    { analyzeCount--;    total--; }
+            else if (applyCount > 0)      { applyCount--;      total--; }
+            else break;
         }
 
         // Absorb any shortfall into applyCount
