@@ -11,22 +11,25 @@ import { Landing } from './pages/Landing';
 import { Dashboard } from './pages/Dashboard';
 import { Documents } from './pages/Documents';
 import { Chat } from './pages/Chat';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 function App() {
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/documents" element={<Documents />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/chat/:conversationId" element={<Chat />} />
-          </Routes>
-        </BrowserRouter>
-      </QueryClientProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/documents" element={<Documents />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/chat/:conversationId" element={<Chat />} />
+            </Routes>
+          </BrowserRouter>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 
