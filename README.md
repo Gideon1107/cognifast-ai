@@ -1,9 +1,7 @@
 <div align="center">
  
-![Adobe Express - 90BD506F-D055-48EE-B463-C2F2F351136A](https://github.com/user-attachments/assets/a6b15c37-494b-4589-b7f5-8ac3bcd852a9)<br>
 
-
-<!-- <img width="150" height="150" alt="cognifast_logo" src="https://github.com/user-attachments/assets/05380a0d-5b9f-4741-a672-302049898f56" /><br> -->
+<img width="150" height="150" alt="cognifast_logo" src="https://github.com/user-attachments/assets/05380a0d-5b9f-4741-a672-302049898f56" /><br>
 # Cognifast AI
 
 **An AI-Powered Adaptive Learning Platform for Faster Learning and Knowledge Evaluation — upload sources, chat with your documents, take quizzes, and get answers with citations.**
