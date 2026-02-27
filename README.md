@@ -1,7 +1,7 @@
 <div align="center">
  
-
 <img width="150" height="150" alt="cognifast_logo" src="https://github.com/user-attachments/assets/05380a0d-5b9f-4741-a672-302049898f56" /><br>
+
 # Cognifast AI
 
 **An AI-Powered Adaptive Learning Platform for Faster Learning and Knowledge Evaluation — upload sources, chat with your documents, take quizzes, and get answers with citations.**
@@ -17,7 +17,7 @@
 [![Open Source](https://img.shields.io/badge/Open%20Source-Yes-green?style=for-the-badge)](https://github.com/Gideon1107/Cognifast-ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-https://github.com/user-attachments/assets/8f046bff-4917-4d31-80a5-9722d1843294
+https://github.com/user-attachments/assets/a1f74755-b1b3-4934-844a-d07658202691
 
 </div>
 
