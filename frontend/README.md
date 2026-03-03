@@ -267,11 +267,8 @@ import { useChatStore } from '@/store';
 ## 🧪 Testing
 
 ```bash
-# Run tests (when implemented)
-npm test
-
-# Run tests in watch mode
-npm test -- --watch
+# Run frontend unit tests
+npm run test
 ```
 
 ## 📱 Features in Detail
