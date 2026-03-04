@@ -1,6 +1,7 @@
 services:
   db:
     image: pgvector/pgvector:pg17
+    platform: linux/arm64/v8
     container_name: cognifast-db
     restart: unless-stopped
     ports:
