@@ -101,17 +101,17 @@ export interface ChatPanelProps {
     messages: Message[];
     message: string;
     setMessage: (message: string) => void;
-    onSendMessage: () => void;
+    onSendMessage: (content?: string) => void;
     isLoading: boolean;
-  }
-  
-  /**
-   * Citation State
-   */
+}
+
+/**
+ * Citation State
+ */
 export interface CitationState {
     source: MessageSource;
     position: { x: number; y: number };
     placement: 'above' | 'below';
-  }
- 
+}
+
 

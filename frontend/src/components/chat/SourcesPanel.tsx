@@ -3,6 +3,7 @@
  */
 
 import { FileText, Globe, PanelLeft } from 'lucide-react';
+import { useChatStore } from '../../store';
 
 export interface Source {
   id: string;
@@ -15,11 +16,41 @@ interface SourcesPanelProps {
 }
 
 export function SourcesPanel({ sources }: SourcesPanelProps) {
+  const { isSourcesCollapsed, toggleSourcesCollapsed } = useChatStore();
+
+  if (isSourcesCollapsed) {
+    return (
+      <div className="bg-white dark:bg-zinc-900 flex flex-col items-center border border-gray-100 dark:border-zinc-900 rounded-xl overflow-hidden h-full py-4 gap-4">
+        <button
+          onClick={toggleSourcesCollapsed}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          aria-label="Expand sources panel"
+          title="Expand Sources"
+        >
+          <PanelLeft className="w-5 h-5 text-gray-500 dark:text-gray-400 rotate-180" />
+        </button>
+        <div className="flex flex-col gap-3">
+          {sources.length > 0 ? (
+            <div className="relative group">
+              <FileText className="w-6 h-6 text-blue-500/50" />
+              <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[10px] font-bold px-1 rounded-full">
+                {sources.length}
+              </span>
+            </div>
+          ) : (
+            <FileText className="w-6 h-6 text-gray-300 dark:text-zinc-700" />
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white dark:bg-zinc-900 flex flex-col border border-gray-100 dark:border-zinc-900 rounded-xl overflow-hidden h-full">
       <div className="p-4 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-600 dark:text-gray-300 sansation-regular">Sources</h2>
         <button
+          onClick={toggleSourcesCollapsed}
           className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           aria-label="Collapse sources panel"
           title="Collapse Sources"

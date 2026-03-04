@@ -1,23 +1,17 @@
-/**
- * Studio Home - Options grid and recent activity
- */
-
 import { useState } from 'react';
 import { AudioLines, MonitorPlay, BookOpen, ClipboardList, Network, Layers2, Brain, RefreshCw, MoreVertical } from 'lucide-react';
 import { useQuizStore, type QuizListItem } from '../../store/useQuizStore';
-import { generateQuiz, createQuizAttempt } from '../../lib/api';
+import { createQuizAttempt } from '../../lib/api';
 
 interface StudioHomeProps {
   conversationId: string | null;
   conversationTitle: string;
   sourceCount: number;
-  onQuizGenerated?: () => void;
   onStudioResizeForQuiz?: () => void;
+  handleOptionClick: (optionId: string) => Promise<void>;
 }
 
-const DEFAULT_QUESTION_COUNT = 10;
-
-const studioOptions = [
+export const studioOptions = [
   { id: 'audio', name: 'Audio Overview', icon: AudioLines },
   { id: 'video', name: 'Video Overview', icon: MonitorPlay },
   { id: 'mindmap', name: 'Mind Map', icon: Network },
@@ -31,68 +25,20 @@ export function StudioHome({
   conversationId,
   conversationTitle,
   sourceCount,
-  onQuizGenerated,
   onStudioResizeForQuiz,
+  handleOptionClick,
 }: StudioHomeProps) {
   const {
     quizList,
     isGenerating,
     generatingSourceCount,
     goToQuiz,
-    goToHome,
-    setGenerating,
     setActiveQuizId,
     startAttempt,
-    addQuizToList,
     setError,
   } = useQuizStore();
 
   const [isStarting, setIsStarting] = useState(false);
-
-  const handleOptionClick = async (optionId: string) => {
-    if (optionId === 'quiz' && conversationId) {
-      await handleStartQuiz();
-    }
-  };
-
-  const handleStartQuiz = async () => {
-    if (!conversationId || isGenerating) return;
-
-    try {
-      setIsStarting(true);
-      setGenerating(true, sourceCount);
-      setError(null);
-
-      // 1. Generate quiz with default 10 questions
-      const { quizId } = await generateQuiz(conversationId, DEFAULT_QUESTION_COUNT);
-
-      // Add to list
-      const newQuiz: QuizListItem = {
-        id: quizId,
-        createdAt: new Date().toISOString(),
-        questionCount: DEFAULT_QUESTION_COUNT,
-      };
-      addQuizToList(newQuiz);
-      onQuizGenerated?.();
-
-      // 2. Start attempt and get questions
-      const attemptResponse = await createQuizAttempt(quizId);
-
-      // 3. Go to quiz view
-      setActiveQuizId(quizId);
-      startAttempt(attemptResponse.attemptId, attemptResponse.questions);
-      goToQuiz(quizId);
-      onStudioResizeForQuiz?.();
-
-    } catch (error) {
-      console.error('Failed to start quiz:', error);
-      setError(error instanceof Error ? error.message : 'Failed to generate quiz');
-      goToHome();
-    } finally {
-      setIsStarting(false);
-      setGenerating(false);
-    }
-  };
 
   const handleQuizClick = async (quiz: QuizListItem) => {
     if (!conversationId || isGenerating) return;
@@ -144,9 +90,8 @@ export function StudioHome({
               key={option.id}
               onClick={() => handleOptionClick(option.id)}
               disabled={isDisabled}
-              className={`flex flex-col items-center justify-center p-4 bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-xl transition-colors cursor-pointer relative ${
-                isDisabled ? 'opacity-50 cursor-not-allowed' : ''
-              } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
+              className={`flex flex-col items-center justify-center p-4 bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-xl transition-colors cursor-pointer relative ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''
+                } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
             >
               <Icon className="w-6 h-6 text-gray-700 dark:text-gray-300 mb-2" />
               <span className="text-xs font-medium text-gray-900 dark:text-gray-100 text-center">{option.name}</span>

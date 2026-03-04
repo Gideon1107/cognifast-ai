@@ -19,6 +19,8 @@ export function ChatPanel({
   onSendMessage,
   isLoading,
 }: ChatPanelProps) {
+  // Sidebar state is handled in mini-mode within Source/Studio panels
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const citationTimeoutRef = useRef<number | null>(null);
   const citationShowTimeoutRef = useRef<number | null>(null);
@@ -130,8 +132,8 @@ export function ChatPanel({
     const spaceAbove = rect.top;
 
     const placement: 'above' | 'below' = spaceBelow >= tooltipHeight ? 'below' :
-                                          spaceAbove >= tooltipHeight ? 'above' :
-                                          spaceBelow >= spaceAbove ? 'below' : 'above';
+      spaceAbove >= tooltipHeight ? 'above' :
+        spaceBelow >= spaceAbove ? 'below' : 'above';
 
     const openTooltip = () => {
       setOpenCitation({
@@ -299,20 +301,51 @@ export function ChatPanel({
     <div className="flex flex-col bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-900 rounded-xl overflow-hidden h-full">
       {/* Chat Header */}
       <div className="px-6 py-4 border-b border-gray-200 dark:border-zinc-800 flex flex-row items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-600 dark:text-gray-300 sansation-regular">{title}</h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          {sourceCount} source{sourceCount !== 1 ? 's' : ''}
-        </p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-600 dark:text-gray-300 sansation-regular">{title}</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {sourceCount} source{sourceCount !== 1 ? 's' : ''}
+            </p>
+          </div>
+        </div>
+
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6" style={{ minHeight: 0, maxHeight: '100%' }}>
         {messages.length === 0 && !isLoading ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center text-gray-500 dark:text-gray-400">
-              <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
-              <p className="text-lg font-medium">Start a conversation</p>
-              <p className="text-sm mt-2">Ask questions about your document</p>
+            <div className="text-center max-w-md px-4">
+              <div className="bg-gray-50 dark:bg-zinc-800/50 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 transform rotate-3">
+                <FileText className="w-10 h-10 text-gray-400 dark:text-gray-500" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2 sansation-regular">Start a conversation</h2>
+              <p className="text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
+                Ask questions about your document, or use one of the suggestions below to get started.
+              </p>
+
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  "Summarize the main points",
+                  "What are the key takeaways?",
+                  "Explain this in simpler terms",
+                  "Quiz me on this content"
+                ].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    onClick={() => onSendMessage(suggestion)}
+                    className="group text-left p-4 rounded-2xl bg-white dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {suggestion}
+                      </span>
+                      <SendHorizontal className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0" />
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         ) : (
@@ -428,7 +461,7 @@ export function ChatPanel({
               rows={1}
             />
             <button
-              onClick={onSendMessage}
+              onClick={() => onSendMessage()}
               disabled={!message.trim() || !conversationId}
               className="p-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-full flex align-middle align-self-center items-center justify-center hover:bg-gray-800 dark:hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               aria-label="Send message"

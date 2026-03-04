@@ -139,7 +139,30 @@ export function Chat() {
     setCurrentConversation,
     removeMessage,
     isLoading,
+    isSourcesCollapsed,
+    isStudioCollapsed,
+    toggleSourcesCollapsed,
+    toggleStudioCollapsed,
   } = useChatStore();
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Toggle Sources (Cmd/Ctrl + B)
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSourcesCollapsed();
+      }
+      // Toggle Studio (Cmd/Ctrl + ])
+      if ((e.metaKey || e.ctrlKey) && e.key === ']') {
+        e.preventDefault();
+        toggleStudioCollapsed();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleSourcesCollapsed, toggleStudioCollapsed]);
 
   // WebSocket hook for real-time messaging
   const { sendMessage: sendMessageViaWebSocket } = useWebSocket({
@@ -205,19 +228,22 @@ export function Chat() {
     }
   };
 
-  const handleSendMessage = () => {
-    if (!message.trim() || !conversationId) return;
+  const handleSendMessage = (contentOverride?: string) => {
+    const finalContent = contentOverride || message;
+    if (!finalContent.trim() || !conversationId) return;
 
     const userMessage: Message = {
       id: `temp-${Date.now()}`,
       conversationId,
       role: 'user',
-      content: message.trim(),
+      content: finalContent.trim(),
       createdAt: new Date().toISOString(),
     };
 
-    const messageContent = message.trim();
-    setMessage('');
+    const messageContent = finalContent.trim();
+    if (!contentOverride) {
+      setMessage('');
+    }
 
     addMessage(conversationId, userMessage);
 
@@ -269,21 +295,36 @@ export function Chat() {
       {/* 3-Column Layout */}
       <main id="main-content" tabIndex={-1} ref={containerRef} className="flex-1 flex overflow-hidden px-4 pt-2 pb-2 gap-1">
         {/* Left Sidebar - Sources */}
-        <div style={{ flex: `0 0 ${widths.sources}%`, minWidth: 0 }}>
+        <div
+          style={{
+            width: isSourcesCollapsed ? '4rem' : `${widths.sources}%`,
+            minWidth: isSourcesCollapsed ? '4rem' : '200px',
+            flex: isSourcesCollapsed ? '0 0 4rem' : `0 0 ${widths.sources}%`,
+            transition: 'all 0.3s ease-in-out',
+            pointerEvents: 'auto',
+          }}
+          className="overflow-hidden"
+        >
           <SourcesPanel sources={sources} />
         </div>
 
         {/* Resize Handle Sources-Chat */}
-        <div
-          onMouseDown={() => startResizing('sources')}
-          onDoubleClick={resetWidths}
-          className="w-1 cursor-col-resize transition-colors shrink-0 flex items-center justify-center group"
-        >
-          {/* <div className="w-0.5 h-8 bg-gray-200 dark:bg-zinc-700 group-hover:bg-blue-400 rounded-full transition-colors" /> */}
-        </div>
+        {!isSourcesCollapsed && (
+          <div
+            onMouseDown={() => startResizing('sources')}
+            onDoubleClick={resetWidths}
+            className="w-1 cursor-col-resize transition-colors shrink-0 flex items-center justify-center group"
+          />
+        )}
 
         {/* Center - Chat Interface */}
-        <div style={{ flex: `0 0 ${widths.chat}%`, minWidth: 0 }}>
+        <div
+          style={{
+            flex: `1 1 0%`,
+            minWidth: '400px',
+            transition: 'all 0.3s ease-in-out'
+          }}
+        >
           <ChatPanel
             conversationId={conversationId || null}
             title={conversation?.title || 'New Classroom'}
@@ -297,16 +338,25 @@ export function Chat() {
         </div>
 
         {/* Resize Handle Chat-Studio */}
-        <div
-          onMouseDown={() => startResizing('studio')}
-          onDoubleClick={resetWidths}
-          className="w-1 cursor-col-resize transition-colors shrink-0 flex items-center justify-center group"
-        >
-          {/* <div className="w-0.5 h-8 bg-gray-200 dark:bg-zinc-700 group-hover:bg-blue-400 rounded-full transition-colors" /> */}
-        </div>
+        {!isStudioCollapsed && (
+          <div
+            onMouseDown={() => startResizing('studio')}
+            onDoubleClick={resetWidths}
+            className="w-1 cursor-col-resize transition-colors shrink-0 flex items-center justify-center group"
+          />
+        )}
 
         {/* Right Sidebar - Studio */}
-        <div style={{ flex: `0 0 ${widths.studio}%`, minWidth: 0 }}>
+        <div
+          style={{
+            width: isStudioCollapsed ? '4rem' : `${widths.studio}%`,
+            minWidth: isStudioCollapsed ? '4rem' : '240px',
+            flex: isStudioCollapsed ? '0 0 4rem' : `0 0 ${widths.studio}%`,
+            transition: 'all 0.3s ease-in-out',
+            pointerEvents: 'auto',
+          }}
+          className="overflow-hidden"
+        >
           <StudioPanel
             conversationId={conversationId || null}
             conversationTitle={conversation?.title || 'Quiz'}
