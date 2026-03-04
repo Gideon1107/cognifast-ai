@@ -236,105 +236,107 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={handleClose}
       />
 
       {/* Modal */}
-      <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
+      <div className="relative bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-gray-200/80 dark:border-zinc-700/80 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-zinc-700">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white sansation-regular">Upload Source</h2>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-zinc-800 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-linear-to-br from-emerald-500/15 to-blue-500/15 rounded-xl flex items-center justify-center">
+              <Upload className="w-4 h-4 text-emerald-500" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white sansation-regular">Upload Source</h2>
+          </div>
           <button
             onClick={handleClose}
             disabled={uploadStatus === 'uploading'}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             aria-label="Close upload modal"
           >
-            <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
-          {/* Upload Mode Tabs */}
-          <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-zinc-700">
-            <button
-              onClick={() => {
-                setUploadMode('file');
-                setErrorMessage(null);
+        {/* Scrollable Content */}
+        <div className="p-6 overflow-y-auto">
+
+          {/* Mode Tabs — sliding pill */}
+          <div className="relative flex p-1 bg-gray-100 dark:bg-zinc-800 rounded-xl mb-6">
+            {/* Sliding background indicator */}
+            <div
+              className="absolute top-1 bottom-1 rounded-lg bg-white dark:bg-zinc-700 shadow-sm transition-all duration-200 ease-in-out"
+              style={{
+                width: 'calc(50% - 6px)',
+                left: uploadMode === 'file' ? '4px' : 'calc(50% + 2px)',
               }}
+            />
+            <button
+              onClick={() => { setUploadMode('file'); setErrorMessage(null); }}
               disabled={uploadStatus === 'uploading' || isStarting}
-              className={`px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
-                uploadMode === 'file'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                uploadMode === 'file' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
               }`}
             >
-              <div className="flex items-center gap-2">
-                <File className="w-4 h-4" />
-                <span>Upload File</span>
-              </div>
+              <File className="w-4 h-4" />
+              Upload File
             </button>
             <button
-              onClick={() => {
-                setUploadMode('url');
-                setErrorMessage(null);
-              }}
+              onClick={() => { setUploadMode('url'); setErrorMessage(null); }}
               disabled={uploadStatus === 'uploading' || isStarting}
-              className={`px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
-                uploadMode === 'url'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                uploadMode === 'url' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
               }`}
             >
-              <div className="flex items-center gap-2">
-                <Link className="w-4 h-4" />
-                <span>Add URL</span>
-              </div>
+              <Link className="w-4 h-4" />
+              Add URL
             </button>
           </div>
 
           {/* Uploaded Sources List */}
           {uploadedSources.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-                Uploaded Sources ({uploadedSources.length})
+            <div className="mb-5">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+                Sources added ({uploadedSources.length})
               </h3>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="space-y-2 max-h-44 overflow-y-auto">
                 {uploadedSources.map((source) => (
                   <div
                     key={source.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-800 rounded-lg border border-gray-200 dark:border-zinc-700"
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-800/60 border border-gray-200/80 dark:border-zinc-700/60 rounded-xl"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      {source.fileType === 'url' ? (
-                        <Link className="w-5 h-5 text-blue-500 shrink-0" />
-                      ) : (
-                        <FileText className="w-5 h-5 text-blue-500 shrink-0" />
-                      )}
+                      <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center shrink-0">
+                        {source.fileType === 'url'
+                          ? <Link className="w-4 h-4 text-blue-500" />
+                          : <FileText className="w-4 h-4 text-blue-500" />
+                        }
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                           {source.originalName || source.filename}
                         </p>
                         {source.fileType === 'url' ? (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate" title={source.sourceUrl}>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 truncate" title={source.sourceUrl}>
                             {source.sourceUrl}
                           </p>
                         ) : (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{formatFileSize(source.fileSize)}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500">{formatFileSize(source.fileSize)}</p>
                         )}
                       </div>
                     </div>
                     <button
                       onClick={() => handleRemoveSource(source.id!)}
                       disabled={uploadStatus === 'uploading' || isStarting}
-                      className="p-1.5 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                      className="p-1.5 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
                       title="Remove source"
                       aria-label={`Remove source ${source.originalName || source.filename}`}
                     >
-                      <Trash2 className="w-4 h-4 text-red-600" />
+                      <Trash2 className="w-4 h-4 text-red-500" />
                     </button>
                   </div>
                 ))}
@@ -349,12 +351,12 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${
+              className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-200 ${
                 isDragging
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20'
                   : uploadStatus === 'uploading' || isStarting
-                  ? 'border-gray-300 dark:border-zinc-600 bg-gray-50 dark:bg-zinc-800 cursor-not-allowed'
-                  : 'border-gray-300 dark:border-zinc-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-zinc-800'
+                  ? 'border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/40 cursor-not-allowed'
+                  : 'border-gray-200 dark:border-zinc-700 hover:border-emerald-400 dark:hover:border-emerald-500 hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10'
               }`}
             >
               <input
@@ -368,38 +370,33 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
 
               {uploadStatus === 'uploading' ? (
                 <div className="space-y-4">
-                  <div className="w-16 h-16 mx-auto">
-                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent"></div>
+                  <div className="w-14 h-14 mx-auto flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-500 border-t-transparent" />
                   </div>
-                  <div>
-                    <p className="text-lg font-medium text-gray-900 dark:text-gray-100">Uploading...</p>
-                    <div className="mt-4 w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-2">
-                      <div
-                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{uploadProgress}%</p>
+                  <p className="text-base font-medium text-gray-900 dark:text-gray-100">Uploading...</p>
+                  <div className="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-1.5">
+                    <div
+                      className="bg-linear-to-r from-emerald-500 to-blue-600 h-1.5 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
                   </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{uploadProgress}%</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <Upload className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto" />
-                  <div>
-                    <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                      {uploadedSources.length > 0
-                        ? 'Add another source'
-                        : 'Drag and drop your source here'}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">or click to browse</p>
+                <div className="space-y-3">
+                  <div className="w-14 h-14 bg-linear-to-br from-emerald-500/10 to-blue-500/10 rounded-2xl flex items-center justify-center mx-auto">
+                    <Upload className="w-7 h-7 text-emerald-500" />
                   </div>
-                  <div className="flex items-center justify-center gap-4 mt-6">
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                      <File className="w-4 h-4" />
-                      <span>PDF, DOCX, TXT</span>
-                    </div>
-                    <span className="text-gray-400 dark:text-gray-500">•</span>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Max 10MB</span>
+                  <div>
+                    <p className="text-base font-semibold text-gray-900 dark:text-white">
+                      {uploadedSources.length > 0 ? 'Add another source' : 'Drag and drop your file here'}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">or click to browse</p>
+                  </div>
+                  <div className="flex items-center justify-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+                    <span>PDF, DOCX, TXT</span>
+                    <span>·</span>
+                    <span>Max 10 MB</span>
                   </div>
                 </div>
               )}
@@ -408,84 +405,79 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
 
           {/* URL Upload Mode */}
           {uploadMode === 'url' && (
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="url-input" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Web Page URL
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    id="url-input"
-                    type="url"
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !uploadStatus && urlInput.trim()) {
-                        handleUrlUpload(urlInput);
-                      }
-                    }}
-                    placeholder="https://example.com/article"
-                    disabled={uploadStatus === 'uploading' || isStarting}
-                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 disabled:dark:bg-zinc-700 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:border-blue-500"
-                  />
-                  <button
-                    onClick={() => handleUrlUpload(urlInput)}
-                    disabled={uploadStatus === 'uploading' || isStarting || !urlInput.trim()}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                  >
-                    {uploadStatus === 'uploading' ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                        <span>Scraping...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Link className="w-4 h-4" />
-                        <span>Add URL</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                {uploadStatus === 'uploading' && (
-                  <div className="mt-4">
-                    <div className="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-2">
-                      <div
-                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 text-center">{uploadProgress}%</p>
-                  </div>
-                )}
+            <div className="space-y-3">
+              <label htmlFor="url-input" className="block text-sm font-medium text-gray-900 dark:text-white">
+                Web Page URL
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="url-input"
+                  type="url"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !uploadStatus && urlInput.trim()) {
+                      handleUrlUpload(urlInput);
+                    }
+                  }}
+                  placeholder="https://example.com/article"
+                  disabled={uploadStatus === 'uploading' || isStarting}
+                  className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-xl bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 disabled:dark:bg-zinc-700 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 transition-colors"
+                />
+                <button
+                  onClick={() => handleUrlUpload(urlInput)}
+                  disabled={uploadStatus === 'uploading' || isStarting || !urlInput.trim()}
+                  className="px-5 py-2.5 bg-linear-to-r from-emerald-500 to-blue-600 text-white rounded-xl font-medium hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 shrink-0"
+                >
+                  {uploadStatus === 'uploading' ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                      <span>Scraping...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Link className="w-4 h-4" />
+                      <span>Add URL</span>
+                    </>
+                  )}
+                </button>
               </div>
+              {uploadStatus === 'uploading' && (
+                <div className="space-y-1.5">
+                  <div className="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-1.5">
+                    <div
+                      className="bg-linear-to-r from-emerald-500 to-blue-600 h-1.5 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 text-center">{uploadProgress}%</p>
+                </div>
+              )}
             </div>
           )}
 
           {/* Error Message */}
           {uploadStatus === 'error' && errorMessage && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200/80 dark:border-red-800/60 rounded-xl flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-red-900">Upload Failed</p>
-                <p className="text-sm text-red-700 mt-1">{errorMessage}</p>
+                <p className="text-sm font-semibold text-red-800 dark:text-red-300">Upload Failed</p>
+                <p className="text-sm text-red-700 dark:text-red-400 mt-0.5">{errorMessage}</p>
               </div>
               <button
-                onClick={() => {
-                  setUploadStatus('idle');
-                  setErrorMessage(null);
-                }}
-                className="text-sm font-medium text-red-600 hover:text-red-700 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                onClick={() => { setUploadStatus('idle'); setErrorMessage(null); }}
+                className="text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 shrink-0"
               >
-                Try Again
+                Dismiss
               </button>
             </div>
           )}
 
-          {/* Classroom Name Input */}
+          {/* Classroom Name + Start */}
           {uploadedSources.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-zinc-700 space-y-4">
+            <div className="mt-5 pt-5 border-t border-gray-100 dark:border-zinc-800 space-y-4">
               <div>
-                <label htmlFor="classroom-name" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                <label htmlFor="classroom-name" className="block text-sm font-medium text-gray-900 dark:text-white mb-1.5">
                   Classroom Name
                 </label>
                 <input
@@ -495,19 +487,18 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
                   onChange={(e) => setClassroomName(e.target.value)}
                   placeholder="Enter classroom name"
                   disabled={uploadStatus === 'uploading' || isStarting}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 disabled:dark:bg-zinc-700 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:border-blue-500"
+                  className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-xl bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 disabled:dark:bg-zinc-700 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 transition-colors"
                 />
               </div>
 
-              {/* Start Classroom Button */}
               <button
                 onClick={handleStartClassroom}
                 disabled={uploadStatus === 'uploading' || isStarting || !classroomName.trim()}
-                className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                className="w-full bg-linear-to-r from-emerald-500 to-blue-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md shadow-blue-500/20 hover:shadow-blue-500/35 hover:scale-[1.01] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-md flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
               >
                 {isStarting ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
                     <span>Starting Classroom...</span>
                   </>
                 ) : (
@@ -519,6 +510,7 @@ export function SourceUploadModal({ isOpen, onClose, onStartClassroom }: SourceU
               </button>
             </div>
           )}
+
         </div>
       </div>
     </div>

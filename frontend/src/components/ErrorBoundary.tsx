@@ -42,54 +42,59 @@ export class ErrorBoundary extends Component<Props, State> {
     public render() {
         if (this.state.hasError) {
             return (
-                <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0b0d11] px-4 font-inter">
-                    <div className="max-w-md w-full animate-in fade-in zoom-in duration-300">
-                        <div className="bg-white dark:bg-gray-900 shadow-2xl rounded-[2.5rem] overflow-hidden border border-gray-100 dark:border-gray-800 p-10 text-center relative">
-                            {/* Decorative elements */}
-                            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-red-500/10 rounded-full blur-2xl" />
-                            <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl" />
+                <div className="relative min-h-screen flex items-center justify-center bg-white dark:bg-zinc-900 overflow-hidden px-6">
+                    {/* Background orbs */}
+                    <div
+                        aria-hidden
+                        className="orb animate-pulse-orb w-[600px] h-[600px] -top-48 -left-48 opacity-40"
+                        style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.35) 0%, transparent 70%)' }}
+                    />
+                    <div
+                        aria-hidden
+                        className="orb animate-pulse-orb w-[500px] h-[500px] -bottom-32 -right-32 opacity-30"
+                        style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.3) 0%, transparent 70%)', animationDelay: '3s' }}
+                    />
 
-                            <div className="w-20 h-20 bg-red-50/80 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-3xl flex items-center justify-center mx-auto mb-8 rotate-3 shadow-inner border border-red-100 dark:border-red-900/30">
-                                <AlertTriangle size={40} strokeWidth={1.5} />
-                            </div>
-
-                            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-3 tracking-tight">
-                                Wait, Something Wrong
-                            </h1>
-                            <p className="text-gray-600 dark:text-gray-400 mb-6 text-lg leading-relaxed font-medium">
-                                Cognifast ran into an unexpected glitch. Please try again or return to the dashboard.
-                            </p>
-
-                            {this.state.error && (
-                                <div className="mb-10 p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-2xl">
-                                    <p className="text-sm font-mono text-red-600 dark:text-red-400 break-words">
-                                        Something went wrong while rendering this page.
-                                    </p>
-                                </div>
-                            )}
-
-                            <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4 justify-center">
-                                <button
-                                    onClick={this.handleReload}
-                                    className="flex items-center justify-center space-x-2 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all shadow-xl shadow-indigo-500/20 active:scale-95 group"
-                                >
-                                    <RefreshCcw size={18} className="group-hover:rotate-180 transition-transform duration-500" />
-                                    <span>Try Again</span>
-                                </button>
-                                <button
-                                    onClick={this.handleReset}
-                                    className="flex items-center justify-center space-x-2 px-8 py-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 font-bold rounded-2xl transition-all active:scale-95"
-                                >
-                                    <Home size={18} />
-                                    <span>Dashboard</span>
-                                </button>
-                            </div>
-
-
+                    <div className="relative z-10 max-w-md w-full text-center">
+                        {/* Icon */}
+                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-red-500/10 border border-red-500/20 mb-8 mx-auto">
+                            <AlertTriangle size={36} className="text-red-400" strokeWidth={1.5} />
                         </div>
 
-                        <p className="mt-8 text-center text-gray-400 dark:text-gray-600 text-sm font-medium">
-                            Error code: <span className="font-mono bg-gray-100 dark:bg-gray-800/50 px-2 py-0.5 rounded text-xs uppercase">cf_render_exception</span>
+                        <h1 className="sansation-regular text-4xl font-bold text-gray-900 dark:text-white mb-3 tracking-tight">
+                            Something went wrong
+                        </h1>
+                        <p className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed mb-8">
+                            Cognifast hit an unexpected error. Try reloading or head back to the dashboard.
+                        </p>
+
+                        {this.state.error && (
+                            <div className="mb-8 px-4 py-3 glass rounded-xl border border-red-500/15 text-left">
+                                <p className="text-xs font-mono text-red-400 break-all">
+                                    {this.state.error.message || 'An unknown error occurred.'}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                            <button
+                                onClick={this.handleReload}
+                                className="inline-flex items-center gap-2 bg-linear-to-r from-emerald-500 to-blue-600 text-white px-8 py-3 rounded-xl text-base font-semibold shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.03] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 cursor-pointer group"
+                            >
+                                <RefreshCcw size={16} className="group-hover:rotate-180 transition-transform duration-500" />
+                                Try Again
+                            </button>
+                            <button
+                                onClick={this.handleReset}
+                                className="inline-flex items-center gap-2 glass px-8 py-3 rounded-xl text-base font-semibold text-gray-700 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-white/10 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 cursor-pointer"
+                            >
+                                <Home size={16} />
+                                Dashboard
+                            </button>
+                        </div>
+
+                        <p className="mt-10 text-xs text-gray-400 dark:text-gray-600 font-mono">
+                            cf_render_exception
                         </p>
                     </div>
                 </div>
