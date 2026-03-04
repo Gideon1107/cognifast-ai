@@ -80,7 +80,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set((state) => {
       const newMessages = new Map(state.messages);
       const existingMessages = newMessages.get(conversationId) || [];
-      
+
       // Check if message already exists (by ID)
       const messageExists = existingMessages.some((m) => m.id === message.id);
       if (messageExists) {
@@ -110,7 +110,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set((state) => {
       const newMessages = new Map(state.messages);
       const existingMessages = newMessages.get(conversationId) || [];
-      
+
       const updatedMessages = existingMessages.map((msg) =>
         msg.id === messageId ? { ...msg, ...updates } : msg
       );
@@ -127,10 +127,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set((state) => {
       const newMessages = new Map(state.messages);
       const existingMessages = newMessages.get(conversationId) || [];
-      
+
       const filteredMessages = existingMessages.filter((msg) => msg.id !== messageId);
       newMessages.set(conversationId, filteredMessages);
-      
+
       return { messages: newMessages };
     });
   },
@@ -192,11 +192,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
    */
   finalizeStreamingMessage: (conversationId: string, message: Message) => {
     const state = get();
-    
+
     // Clear streaming and loading state
     state.clearStreaming(conversationId);
     state.clearLoadingState(conversationId);
-    
+
     // Add the finalized message
     state.addMessage(conversationId, message);
   },
@@ -279,5 +279,53 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   isLoading: (conversationId: string) => {
     return get().loadingState.has(conversationId);
   },
+
+  // ============================================
+  // UI Actions helpers
+  // ============================================
+
+  isSourcesCollapsed: readBool('isSourcesCollapsed'),
+  isStudioCollapsed: readBool('isStudioCollapsed'),
+
+  toggleSourcesCollapsed: () => {
+    const newVal = !get().isSourcesCollapsed;
+    set({ isSourcesCollapsed: newVal });
+    writeBool('isSourcesCollapsed', newVal);
+  },
+
+  toggleStudioCollapsed: () => {
+    const newVal = !get().isStudioCollapsed;
+    set({ isStudioCollapsed: newVal });
+    writeBool('isStudioCollapsed', newVal);
+  },
+
+  setSourcesCollapsed: (collapsed: boolean) => {
+    set({ isSourcesCollapsed: collapsed });
+    writeBool('isSourcesCollapsed', collapsed);
+  },
+
+  setStudioCollapsed: (collapsed: boolean) => {
+    set({ isStudioCollapsed: collapsed });
+    writeBool('isStudioCollapsed', collapsed);
+  },
 }));
+
+// SSR safe storage helpers
+function readBool(key: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(key) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeBool(key: string, value: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(key, String(value));
+  } catch {
+    // no-op
+  }
+}
 

@@ -23,6 +23,8 @@ export interface ChatStore {
   currentConversationId: string | null;
   streamingContent: Map<string, StreamingState>;
   loadingState: Set<string>;
+  isSourcesCollapsed: boolean;
+  isStudioCollapsed: boolean;
 
   // Actions - Conversations
   setConversation: (conversation: Conversation) => void;
@@ -46,6 +48,12 @@ export interface ChatStore {
   // Actions - Loading
   setLoading: (conversationId: string, value: boolean) => void;
   clearLoadingState: (conversationId: string) => void;
+
+  // Actions - UI
+  toggleSourcesCollapsed: () => void;
+  toggleStudioCollapsed: () => void;
+  setSourcesCollapsed: (collapsed: boolean) => void;
+  setStudioCollapsed: (collapsed: boolean) => void;
 
   // Helpers
   getMessages: (conversationId: string) => Message[];
