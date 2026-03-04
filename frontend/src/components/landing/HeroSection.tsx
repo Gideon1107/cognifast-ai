@@ -66,7 +66,7 @@ export function HeroSection({ onGetStarted }: HeroSectionProps) {
         >
           <button
             onClick={onGetStarted}
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-blue-600 text-white px-10 py-4 rounded-xl text-lg font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/45 hover:scale-[1.03] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 cursor-pointer"
+            className="inline-flex items-center gap-2 bg-linear-to-r from-emerald-500 to-blue-600 text-white px-10 py-4 rounded-xl text-lg font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/45 hover:scale-[1.03] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 cursor-pointer"
           >
             Try Cognifast AI
             <ArrowRight className="w-5 h-5" />
