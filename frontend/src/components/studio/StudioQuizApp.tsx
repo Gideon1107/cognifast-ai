@@ -16,11 +16,11 @@ interface StudioQuizAppProps {
   onSendMessage?: (message: string) => void;
 }
 
-export function StudioQuizApp({ 
-  conversationId, 
+export function StudioQuizApp({
+  conversationId,
   conversationTitle,
   sourceCount,
-  onSendMessage 
+  onSendMessage
 }: StudioQuizAppProps) {
   const {
     questions,
@@ -155,6 +155,11 @@ Help me understand why my answer was incorrect.`;
     });
 
     onSendMessage?.(explainMessage);
+
+    // Collapse the quiz panel if it's expanded so the user can see the explanation in the chat
+    if (isQuizExpanded) {
+      setIsQuizExpanded(false);
+    }
   };
 
   const getOptionStyles = (optionIndex: number) => {
@@ -183,7 +188,7 @@ Help me understand why my answer was incorrect.`;
   // Render text with LaTeX
   const renderText = (text: string) => {
     const parts = renderWithLatex(text);
-    return parts.map((part, idx) => 
+    return parts.map((part, idx) =>
       typeof part === 'string' ? <span key={idx}>{part}</span> : part
     );
   };
@@ -251,9 +256,8 @@ Help me understand why my answer was incorrect.`;
                   key={index}
                   onClick={() => handleOptionClick(index)}
                   disabled={hasAnswered || isSubmitting}
-                  className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${getOptionStyles(index)} ${
-                    !hasAnswered && !isSubmitting ? 'cursor-pointer' : 'cursor-default'
-                  } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
+                  className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${getOptionStyles(index)} ${!hasAnswered && !isSubmitting ? 'cursor-pointer' : 'cursor-default'
+                    } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
                 >
                   <span className="shrink-0 text-gray-500 dark:text-gray-400 font-medium">
                     {String.fromCharCode(65 + index)}.
