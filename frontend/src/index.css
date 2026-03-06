@@ -4,28 +4,13 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 
-/* Custom scrollbar styling - always show thumb */
+/* Hide scrollbar visually, keep scroll functional */
 ::-webkit-scrollbar {
-  width: 8px;
+  display: none;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1; /* gray-300 */
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8; /* gray-400 */
-}
-
-/* Firefox scrollbar */
 * {
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-width: none;
 }
 
 
@@ -35,6 +20,7 @@
     height: 100%;
     margin: 0;
     padding: 0;
+    overflow-x: hidden;
   }
   
   body {
@@ -127,18 +113,6 @@
   font-style: normal;
 }
 
-/* Dark mode scrollbar overrides */
-.dark ::-webkit-scrollbar-thumb {
-  background: #4b5563; /* gray-600 */
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #6b7280; /* gray-500 */
-}
-
-.dark * {
-  scrollbar-color: #4b5563 transparent;
-}
 
 /* ============================================================
    Landing Page Animation System
