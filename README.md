@@ -199,27 +199,15 @@ cd frontend && npm install
 cd ../backend && npm install
 ```
 
-### 4. Configure environment
+### 4. Environmental Setup
 
-**`backend/.env`**
+Both `frontend` and `backend/` require `.env` files.
 
-```env
-PORT=3000
-NODE_ENV=development
-
-# Docker Postgres (local dev)
-DATABASE_URL="postgresql://cognifast:cognifast@localhost:5433/cognifast_db"
-
-# OpenAI
-OPENAI_API_KEY=your-openai-api-key
+```bash
+    cp frontend/.env.example frontend/.env
+    cp backend/.env.example backend/.env
 ```
-
-**`frontend/.env`**
-
-```env
-VITE_API_BASE_URL=http://localhost:3000/api
-VITE_WS_URL=http://localhost:3000
-```
+Then fill in the real values in each .env files. See the comments inside each `.env.example` for more clearance.
 
 ### 5. Run the app
 

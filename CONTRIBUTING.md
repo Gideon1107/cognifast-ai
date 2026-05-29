@@ -39,7 +39,13 @@ This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDU
   cd backend && npm install
   cd ../frontend && npm install
   ```
-- **Environment**: Copy `.env.example` (if present) to `.env` in `backend/` and `frontend/` and set required variables (e.g. `DATABASE_URL`, `OPENAI_API_KEY`).
+- **Environment**: Copy the `.env.example` to `.env` in `backend/` and `frontend/` and set required variables.
+```bash
+  cp frontend/.env.example frontend/.env
+  cp backend/.env.example backend/.env
+```
+Never commit your `.env` files - they're gitignored. If you add a new environmental variable to the app, add a corresponding entry (with a placeholder value and the comment) to the relavant `.env.example` so other contributors know about it.
+
 - **Run the app**: From the repo root, run the backend and frontend as described in the [README](README.md#5-run-the-app).
 
 Make sure existing tests and the app run correctly before changing code.
