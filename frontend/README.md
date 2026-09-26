@@ -54,13 +54,12 @@ The frontend provides an intuitive user interface for:
    npm install
    ```
 
-3. **Configure environment variables**
-   
-   Create a `.env` file in the `frontend` directory:
-   ```env
-   VITE_API_BASE_URL=http://localhost:3000/api
-   VITE_WS_URL=http://localhost:3000
-   ```
+3. **Environmental Setup**
+
+```bash
+  cp frontend/.env.example frontend/.env
+```
+Then fill in the real values in .env files. See the comments inside each `.env.example` for more clearance.
 
 4. **Start development server**
    ```bash

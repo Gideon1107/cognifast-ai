@@ -124,22 +124,13 @@ backend/
    npm install
    ```
 
-2. **Configure environment variables**
-   
-   Create a `.env` file in the `backend` directory:
-   ```env
-   # Server
-   PORT=3000
-   NODE_ENV=development
-   FRONTEND_URL=http://localhost:5173
+2. **Environmental Setup**
 
-   # Supabase
-   SUPABASE_URL=your-supabase-project-url
-   SUPABASE_KEY=your-supabase-service-role-key
+```bash
+  cp backend/.env.example backend/.env
+```
+Then fill in the real values in .env files. See the comments inside each `.env.example` for more clearance.
 
-   # OpenAI
-   OPENAI_API_KEY=your-openai-api-key
-   ```
 
 3. **Set up database**
    
