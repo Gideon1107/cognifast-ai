@@ -272,6 +272,13 @@ Cognifast-ai/
 
 ## API Endpoints
 
+We use Swagger for interactive API documentation. You can view the full documentation, including data models and request/response schemas, by visiting `/api-docs` on your running backend server (e.g., `http://localhost:3000/api-docs`).
+
+To generate or rebuild the `swagger.json` file locally, run the following command from the `backend` directory:
+```bash
+npm run docs:generate
+```
+
 ### Sources
 
 | Method | Endpoint | Description |
