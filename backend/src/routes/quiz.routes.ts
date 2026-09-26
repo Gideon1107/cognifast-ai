@@ -1,13 +1,3 @@
-/**
- * Quiz Routes
- * 
- * POST /api/quiz/generate - Generate a new quiz
- * GET /api/quiz/conversation/:conversationId - Get quizzes for conversation
- * POST /api/quiz/:quizId/attempts - Start attempt (create + get questions)
- * POST /api/quiz/attempts/:attemptId/answer - Submit answer
- * GET /api/quiz/attempts/:attemptId - Get attempt summary
- */
-
 import { Router } from 'express';
 import {
     generateQuiz,
@@ -19,19 +9,142 @@ import {
 
 const router = Router();
 
-// Generate quiz
+/**
+ * @swagger
+ * tags:
+ *   name: Quiz
+ *   description: API for managing quizzes and attempts
+ */
+
+/**
+ * @swagger
+ * /api/quiz/generate:
+ *   post:
+ *     summary: Generate a new quiz
+ *     tags: [Quiz]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               conversationId:
+ *                 type: string
+ *                 format: uuid
+ *               sourceId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       200:
+ *         description: Quiz generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Quiz'
+ */
 router.post('/generate', generateQuiz);
 
-// Get quizzes for conversation (must be before :quizId routes)
+/**
+ * @swagger
+ * /api/quiz/conversation/{conversationId}:
+ *   get:
+ *     summary: Get quizzes for a conversation
+ *     tags: [Quiz]
+ *     parameters:
+ *       - in: path
+ *         name: conversationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: List of quizzes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Quiz'
+ */
 router.get('/conversation/:conversationId', getQuizzesForConversation);
 
-// Start attempt (create + get questions for taking)
+/**
+ * @swagger
+ * /api/quiz/{quizId}/attempts:
+ *   post:
+ *     summary: Start a quiz attempt
+ *     tags: [Quiz]
+ *     parameters:
+ *       - in: path
+ *         name: quizId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Quiz attempt started
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/QuizAttempt'
+ */
 router.post('/:quizId/attempts', createAttempt);
 
-// Submit answer
+/**
+ * @swagger
+ * /api/quiz/attempts/{attemptId}/answer:
+ *   post:
+ *     summary: Submit an answer for a quiz attempt
+ *     tags: [Quiz]
+ *     parameters:
+ *       - in: path
+ *         name: attemptId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               questionId:
+ *                 type: string
+ *                 format: uuid
+ *               answer:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Answer submitted
+ */
 router.post('/attempts/:attemptId/answer', submitAnswer);
 
-// Get attempt summary
+/**
+ * @swagger
+ * /api/quiz/attempts/{attemptId}:
+ *   get:
+ *     summary: Get an attempt summary
+ *     tags: [Quiz]
+ *     parameters:
+ *       - in: path
+ *         name: attemptId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Attempt summary
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/QuizAttempt'
+ */
 router.get('/attempts/:attemptId', getAttemptSummary);
 
 export default router;

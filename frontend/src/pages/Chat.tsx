@@ -165,10 +165,23 @@ export function Chat() {
   }, [toggleSourcesCollapsed, toggleStudioCollapsed]);
 
   // WebSocket hook for real-time messaging
-  const { sendMessage: sendMessageViaWebSocket } = useWebSocket({
+  const { sendMessage: sendMessageViaWebSocket, status } = useWebSocket({
     conversationId: conversationId || null,
     enabled: !!conversationId,
   });
+
+  // Connection banner state for showing 'Restored' briefly
+  const [showRestored, setShowRestored] = useState(false);
+  const prevStatusRef = useRef(status);
+
+  useEffect(() => {
+    if (prevStatusRef.current !== 'connected' && status === 'connected') {
+      setShowRestored(true);
+      const timer = setTimeout(() => setShowRestored(false), 3000);
+      return () => clearTimeout(timer);
+    }
+    prevStatusRef.current = status;
+  }, [status]);
 
   // Determine if modal should be shown
   const isNew = searchParams.get('new') === 'true';
@@ -280,6 +293,18 @@ export function Chat() {
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-zinc-950 overflow-hidden" style={{ position: 'relative' }}>
       <Navbar />
+
+      {/* Connection Status Banner */}
+      {conversationId && status !== 'connected' && (
+        <div className="bg-yellow-500 text-white text-center py-1 text-sm font-medium animate-pulse z-50">
+          {status === 'reconnecting' ? 'Connection lost. Reconnecting...' : 'Disconnected from chat server.'}
+        </div>
+      )}
+      {showRestored && (
+        <div className="bg-green-500 text-white text-center py-1 text-sm font-medium z-50 transition-opacity">
+          Connection restored
+        </div>
+      )}
 
       {/* Source Upload Modal */}
       <SourceUploadModal

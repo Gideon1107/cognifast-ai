@@ -39,6 +39,7 @@ https://github.com/user-attachments/assets/a1f74755-b1b3-4934-844a-d07658202691
 - [Project Structure](#project-structure)
 - [API Endpoints](#api-endpoints)
 - [Database](#database)
+- [Migrations](#migrations)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [License](#license)
@@ -271,6 +272,13 @@ Cognifast-ai/
 
 ## API Endpoints
 
+We use Swagger for interactive API documentation. You can view the full documentation, including data models and request/response schemas, by visiting `/api-docs` on your running backend server (e.g., `http://localhost:3000/api-docs`).
+
+To generate or rebuild the `swagger.json` file locally, run the following command from the `backend` directory:
+```bash
+npm run docs:generate
+```
+
 ### Sources
 
 | Method | Endpoint | Description |
@@ -320,6 +328,12 @@ PostgreSQL 17 with pgvector, running in Docker via `docker-compose.yml`.
 | `quiz_attempts` | User answers, scores, and completion status |
 
 Connection uses `DATABASE_URL` with Drizzle ORM and a raw `pg` Pool for vector search RPCs.
+
+---
+
+## Migrations
+
+If you need to modify the database schema, add tables or run schema updates please thoroughly read our **[Database Migration Guide](./MIGRATION_GUIDE.md)**.
 
 ---
 

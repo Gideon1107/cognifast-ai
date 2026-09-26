@@ -5,6 +5,7 @@ import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
 import cors from 'cors';
+import { setupSwagger } from './swagger';
 import { checkDatabaseConnection } from './db/dbConnection';
 import sourceRoutes from './routes/source.routes';
 import chatRoutes from './routes/chat.routes';
@@ -20,6 +21,8 @@ const PORT = process.env.PORT || 3000;
 
 dotenv.config({debug: false, path: '.env'});
 const app = express();
+
+setupSwagger(app);
 
 app.use(helmet());
 app.use(cors({

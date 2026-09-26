@@ -53,7 +53,7 @@ Make sure existing tests and the app run correctly before changing code.
 ## Coding Standards
 
 - **TypeScript**: Strict mode; avoid `any`. Prefer named exports; default exports only for pages and Express routers.
-- **Backend**: Route → Controller → Service (→ DB / Agent). Use `createLogger('Context')` from `utils/logger.ts` — no `console.log`. Use Drizzle for DB; raw SQL only for vector search via the existing `pool` and helpers.
+- **Backend**: Route → Controller → Service (→ DB / Agent). Use `createLogger('Context')` from `utils/logger.ts` — no `console.log`. Use Drizzle for DB; raw SQL only for vector search via the existing `pool` and helpers. If modifying the database schema, you must follow the [Database Migration Guide](./MIGRATION_GUIDE.md).
 - **Frontend**: React 19, Tailwind in JSX (no CSS modules). Use Zustand for client state and React Query for server state. No API calls inside stores.
 - **Shared**: Types live in `shared/types/`; use the `@shared/*` path alias.
 - **Naming**: `camelCase` for variables/functions, `PascalCase` for types/components/classes, `UPPER_SNAKE_CASE` for constants, `kebab-case` for file names (backend) and as noted in the README for frontend.
@@ -76,7 +76,7 @@ Scope is optional, e.g. `feat(quiz): add time limit option`.
 1. **Target branch**: Open PRs against `dev`, not `main`.
 2. **Scope**: One logical change per PR. Split large features into smaller PRs where possible.
 3. **Description**: Fill in the PR template. Link any related issues.
-4. **Checks**: Ensure the app runs, and any relevant tests pass.
+4. **Checks**: Ensure the app runs, relevant tests pass and any schema changes strictly follow the [Database Migration Guide](./MIGRATION_GUIDE.md) (e.g. no bypassed migrations using db:push).
 5. **Review**: Address feedback from maintainers. We may ask for changes or squash before merge.
 
 After your PR is merged, you can delete your branch and pull the latest `dev` from upstream.

@@ -1,8 +1,3 @@
-/**
- * useWebSocket Hook
- * React hook for managing WebSocket connection and chat streaming
- */
-
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { getSocket } from '../lib/websocket';
 import { useChatStore } from '../store';
@@ -16,12 +11,15 @@ interface UseWebSocketOptions {
     enabled?: boolean;
 }
 
+export type ConnectionStatus = 'connected' | 'reconnecting' | 'disconnected';
+
 /**
  * Hook for managing WebSocket connection and chat streaming
  */
 export function useWebSocket({ conversationId, enabled = true }: UseWebSocketOptions) {
     const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
-    const [isConnected, setIsConnected] = useState(false);
+    const [status, setStatus] = useState<ConnectionStatus>('disconnected');
+    const messageQueueRef = useRef<string[]>([]);
     const {
         setStreamingContent,
         appendStreamingContent,
@@ -35,8 +33,14 @@ export function useWebSocket({ conversationId, enabled = true }: UseWebSocketOpt
      * Send a message via WebSocket
      */
     const sendMessage = useCallback((message: string) => {
-        if (!conversationId || !socketRef.current) {
-            logger.error('Cannot send message: no conversation ID or socket not connected');
+        if (!conversationId) {
+            logger.error('Cannot send message: no conversation ID');
+            return;
+        }
+
+        if (!socketRef.current || status !== 'connected') {
+            logger.info('Socket not connected. Queueing message.');
+            messageQueueRef.current.push(message);
             return;
         }
 
@@ -45,110 +49,113 @@ export function useWebSocket({ conversationId, enabled = true }: UseWebSocketOpt
             conversationId,
             message,
         });
-    }, [conversationId]);
+    }, [conversationId, status]);
 
     useEffect(() => {
         if (!enabled || !conversationId) {
             return;
         }
 
-        // Get or create socket connection
         const socket = getSocket();
         socketRef.current = socket;
 
-        // Update connection status
-        const updateConnectionStatus = () => {
-            setIsConnected(socket.connected);
+        setStatus(socket.connected ? 'connected' : 'disconnected');
+
+        const onConnect = () => {
+            setStatus('connected');
+            socket.emit('join_conversation', { conversationId });
+            
+            // Process queued messages
+            if (messageQueueRef.current.length > 0) {
+                logger.info(`Processing ${messageQueueRef.current.length} queued messages`);
+                messageQueueRef.current.forEach(msg => {
+                    socket.emit('send_message', { conversationId, message: msg });
+                });
+                messageQueueRef.current = [];
+            }
         };
 
-        // Set initial connection status
-        updateConnectionStatus();
+        const onDisconnect = (reason: string) => {
+            if (reason === 'io server disconnect' || reason === 'io client disconnect') {
+                setStatus('disconnected');
+            } else {
+                setStatus('reconnecting');
+            }
+            // If disconnected while streaming, clear state
+            clearStreaming(conversationId);
+            setLoading(conversationId, false);
+        };
 
-        socket.on('connect', () => {
-            setIsConnected(true);
-        });
+        const onReconnectAttempt = () => {
+            setStatus('reconnecting');
+        };
 
-        socket.on('disconnect', () => {
-            setIsConnected(false);
-        });
+        const onReconnectFailed = () => {
+            setStatus('disconnected');
+        };
 
-        // Join conversation room
-        socket.emit('join_conversation', { conversationId });
+        socket.on('connect', onConnect);
+        socket.on('disconnect', onDisconnect);
+        socket.io.on('reconnect_attempt', onReconnectAttempt);
+        socket.io.on('reconnect_failed', onReconnectFailed);
 
-        // Handle joined confirmation
+        if (socket.connected) {
+            socket.emit('join_conversation', { conversationId });
+        }
+
         socket.on('joined_conversation', (data: { conversationId: string }) => {
             logger.info(`Joined conversation room: ${data.conversationId}`);
         });
 
-        // Handle message start
         socket.on('message_start', (data: { conversationId: string }) => {
             logger.info(`Message streaming started for conversation ${data.conversationId}`);
-            // Initialize streaming content and show loading dots
             setStreamingContent(data.conversationId, '', null);
             setLoading(data.conversationId, true);
         });
 
-        // Handle message tokens (streaming)
         socket.on('message_token', (data: { conversationId: string; messageId: string; token: string }) => {
             const { conversationId: convId, token } = data;
-            logger.debug(`Received token for conversation ${convId}`);
-
-            // Clear loading when we start receiving actual content
             if (token && token.trim().length > 0) {
                 setLoading(convId, false);
             }
-
-            // Append token to streaming content
             appendStreamingContent(convId, token);
         });
 
-        // Handle message end (streaming complete)
         socket.on('message_end', (data: { conversationId: string; messageId: string; message: Message }) => {
             const { conversationId: convId, message } = data;
             logger.info(`Message streaming completed for conversation ${convId}`);
-            
-            // Finalize the streaming message
             finalizeStreamingMessage(convId, message);
         });
 
-        // Handle errors
         socket.on('error', (data: { conversationId?: string; message: string }) => {
             logger.error(`WebSocket error: ${data.message}`);
-            
             if (data.conversationId) {
-                // Clear streaming on error
                 clearStreaming(data.conversationId);
                 setLoading(data.conversationId, false);
             }
         });
 
-        // Cleanup on unmount or conversation change
         return () => {
             if (conversationId) {
                 socket.emit('leave_conversation', { conversationId });
             }
             
-            // Remove all listeners for this conversation
-            socket.off('connect');
-            socket.off('disconnect');
+            socket.off('connect', onConnect);
+            socket.off('disconnect', onDisconnect);
+            socket.io.off('reconnect_attempt', onReconnectAttempt);
+            socket.io.off('reconnect_failed', onReconnectFailed);
             socket.off('joined_conversation');
             socket.off('message_start');
             socket.off('message_token');
             socket.off('message_end');
             socket.off('error');
         };
-    }, [conversationId,
-        enabled,
-        appendStreamingContent,
-        clearLoadingState,
-        clearStreaming,
-        finalizeStreamingMessage,
-        setLoading,
-        setStreamingContent,]);
+    }, [conversationId, enabled, appendStreamingContent, clearStreaming, finalizeStreamingMessage, setLoading, setStreamingContent]);
 
     return {
         sendMessage,
-        isConnected,
+        status,
+        isConnected: status === 'connected',
     };
 }
 
