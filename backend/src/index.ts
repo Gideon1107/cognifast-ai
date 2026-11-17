@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import helmet from 'helmet';
 import cors from 'cors';
 import { setupSwagger } from './swagger';
-import { checkDatabaseConnection } from './db/dbConnection';
+import { checkDatabaseConnection, closePool } from './db/dbConnection';
 import sourceRoutes from './routes/source.routes';
 import chatRoutes from './routes/chat.routes';
 import quizRoutes from './routes/quiz.routes';
@@ -91,3 +91,49 @@ httpServer.listen(PORT, async () => {
     logger.info(`   Quiz:      http://localhost:${PORT}/api/quiz`);
     logger.info(`   WebSocket: ws://localhost:${PORT}`);
 });
+
+// Graceful shutdown: stop accepting connections, then close the DB pool
+const SHUTDOWN_TIMEOUT_MS = 10_000;
+let isShuttingDown = false;
+
+const gracefulShutdown = async (signal: NodeJS.Signals): Promise<void> => {
+    if (isShuttingDown) {
+        logger.warn(`Received ${signal} during shutdown; already shutting down`);
+        return;
+    }
+    isShuttingDown = true;
+    logger.info(`Received ${signal}, shutting down gracefully...`);
+
+    // Force exit if cleanup hangs (e.g. long-lived connections)
+    const forceExitTimer = setTimeout(() => {
+        logger.error(`Graceful shutdown timed out after ${SHUTDOWN_TIMEOUT_MS}ms, forcing exit`);
+        process.exit(1);
+    }, SHUTDOWN_TIMEOUT_MS);
+    forceExitTimer.unref();
+
+    let exitCode = 0;
+
+    // io.close() disconnects all sockets and closes the underlying HTTP server
+    try {
+        await new Promise<void>((resolve, reject) => {
+            io.close((err) => (err ? reject(err) : resolve()));
+        });
+        logger.info('HTTP and WebSocket server closed');
+    } catch (error: any) {
+        exitCode = 1;
+        logger.error(`Error closing HTTP server: ${error?.message ?? error}`);
+    }
+
+    try {
+        await closePool();
+    } catch (error: any) {
+        exitCode = 1;
+        logger.error(`Error closing database pool: ${error?.message ?? error}`);
+    }
+
+    clearTimeout(forceExitTimer);
+    process.exit(exitCode);
+};
+
+process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => void gracefulShutdown('SIGTERM'));
